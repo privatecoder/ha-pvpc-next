@@ -2,6 +2,8 @@
 
 PVPC Next is a custom Home Assistant integration that retrieves the Spanish PVPC electricity prices by hour and exposes them as sensors for automations, dashboards, and energy views.
 
+Official PVPC prices: https://www.esios.ree.es/en/pvpc
+
 ---
 
 ## What's new vs the integrated version

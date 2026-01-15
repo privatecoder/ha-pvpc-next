@@ -56,6 +56,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bo
     data = {**entry.data}
     options = {**entry.options}
     migrated = False
+    entry_unique_id = entry.unique_id
 
     for store in (data, options):
         tariff = store.get(ATTR_TARIFF)
@@ -80,6 +81,26 @@ async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bo
     updated_unique_id = TARIFF_ALIASES.get(unique_id, unique_id)
     if updated_unique_id != unique_id:
         migrated = True
+    entity_registry = er.async_get(hass)
+    entity_entries = er.async_entries_for_config_entry(
+        entity_registry, entry.entry_id
+    )
+    if entry_unique_id or entity_entries:
+        for entity in entity_entries:
+            new_unique_id = entity.unique_id
+            for legacy_tariff, new_tariff in TARIFF_ALIASES.items():
+                if new_unique_id == legacy_tariff:
+                    new_unique_id = new_tariff
+                    break
+                if new_unique_id.startswith(f"{legacy_tariff}_"):
+                    new_unique_id = f"{new_tariff}{new_unique_id[len(legacy_tariff):]}"
+                    break
+            if new_unique_id.endswith("_INYECTION"):
+                new_unique_id = new_unique_id.replace("_INYECTION", "_INJECTION")
+            if new_unique_id != entity.unique_id:
+                entity_registry.async_update_entity(
+                    entity.entity_id, new_unique_id=new_unique_id
+                )
 
     hass.config_entries.async_update_entry(
         entry,

@@ -374,7 +374,7 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_num_better_prices_ahead",
-        name="Num Better Prices Ahead",
+        name="Better Prices Ahead",
         attribute_key="num_better_prices_ahead",
         icon="mdi:counter",
         update_on_hour=True,
