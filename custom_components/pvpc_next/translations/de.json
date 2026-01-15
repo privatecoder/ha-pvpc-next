@@ -57,8 +57,8 @@
     "sensor": {
       "price_level": {
         "state": {
-          "very_cheap": "Sehr guenstig",
-          "cheap": "Guenstig",
+          "very_cheap": "Sehr günstig",
+          "cheap": "Günstig",
           "neutral": "Neutral",
           "expensive": "Teuer",
           "very_expensive": "Sehr teuer"
