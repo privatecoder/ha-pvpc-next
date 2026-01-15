@@ -95,7 +95,22 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
             self._power_p2_p3 = user_input[ATTR_POWER_P2_P3]
             self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
             self._enable_injection_price = user_input[ATTR_ENABLE_INJECTION_PRICE]
-            if user_input[CONF_USE_API_TOKEN]:
+            use_api_token = (
+                user_input[CONF_USE_API_TOKEN] or self._enable_injection_price
+            )
+            if use_api_token:
+                existing_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
+                if existing_token:
+                    return self.async_create_entry(
+                        title="",
+                        data={
+                            ATTR_POWER_P1: self._power_p1,
+                            ATTR_POWER_P2_P3: self._power_p2_p3,
+                            ATTR_BETTER_PRICE_TARGET: self._better_price_target,
+                            ATTR_ENABLE_INJECTION_PRICE: self._enable_injection_price,
+                            CONF_API_TOKEN: existing_token,
+                        },
+                    )
                 return await self.async_step_api_token(user_input)
             return self.async_create_entry(
                 title="",
@@ -170,7 +185,9 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             self._power_p2_p3 = user_input[ATTR_POWER_P2_P3]
             self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
             self._enable_injection_price = user_input[ATTR_ENABLE_INJECTION_PRICE]
-            self._use_api_token = user_input[CONF_USE_API_TOKEN]
+            self._use_api_token = (
+                user_input[CONF_USE_API_TOKEN] or self._enable_injection_price
+            )
 
             if self._use_api_token:
                 return await self.async_step_api_token()
