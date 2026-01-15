@@ -2,10 +2,10 @@
   "config": {
     "abort": {
       "already_configured": "This integration is already configured.",
-      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
+      "reauth_successful": "Re-authentication successful."
     },
     "error": {
-      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]"
+      "invalid_auth": "Invalid authentication."
     },
     "step": {
       "api_token": {
@@ -18,20 +18,18 @@
       "reauth_confirm": {
         "data": {
           "api_token": "API Token",
-          "description": "Re-authenticate with a valid token or disable it",
-          "use_api_token": "Enable ESIOS Personal API token for private access"
+          "description": "Re-authenticate with a valid token"
         }
       },
       "user": {
-        "description": "Enable the API token only if you need extra indicators like Injection Price. PVPC works without it.",
+        "description": "Enable Injection Price only if you need it. You will be asked for an API token. PVPC works without it.",
         "data": {
           "name": "Sensor Name",
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "tariff": "Applicable tariff by geographic zone",
           "better_price_target": "Better Price Target",
-          "enable_injection_price": "Enable Injection Price",
-          "use_api_token": "Enable ESIOS Personal API token for private access"
+          "enable_injection_price": "Enable Injection Price"
         }
       }
     }
@@ -46,13 +44,12 @@
         "title": "ESIOS API token"
       },
       "init": {
-        "description": "Enable the API token only if you need extra indicators like Injection Price.",
+        "description": "Enable Injection Price only if you need it. You will be asked for an API token.",
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "better_price_target": "Better Price Target",
-          "enable_injection_price": "Enable Injection Price",
-          "use_api_token": "Enable ESIOS Personal API token for private access"
+          "enable_injection_price": "Enable Injection Price"
         }
       }
     }

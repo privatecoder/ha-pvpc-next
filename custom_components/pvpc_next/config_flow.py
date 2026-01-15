@@ -28,7 +28,6 @@ from .const import (
     ATTR_BETTER_PRICE_TARGET,
     ATTR_ENABLE_INJECTION_PRICE,
     ATTR_TARIFF,
-    CONF_USE_API_TOKEN,
     LEGACY_ATTR_POWER,
     LEGACY_ATTR_POWER_P3,
     DEFAULT_BETTER_PRICE_TARGET,
@@ -69,12 +68,14 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
             ATTR_BETTER_PRICE_TARGET,
             data.get(ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET),
         )
-        enable_injection_price = options.get(
-            ATTR_ENABLE_INJECTION_PRICE,
-            data.get(ATTR_ENABLE_INJECTION_PRICE, DEFAULT_ENABLE_INJECTION_PRICE),
-        )
         api_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
-        use_api_token = api_token is not None
+        enable_injection_price = options.get(ATTR_ENABLE_INJECTION_PRICE)
+        if enable_injection_price is None:
+            enable_injection_price = data.get(ATTR_ENABLE_INJECTION_PRICE)
+        if enable_injection_price is None:
+            enable_injection_price = (
+                bool(api_token) if api_token else DEFAULT_ENABLE_INJECTION_PRICE
+            )
 
         schema = vol.Schema(
             {
@@ -86,7 +87,6 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                 vol.Required(
                     ATTR_ENABLE_INJECTION_PRICE, default=enable_injection_price
                 ): bool,
-                vol.Required(CONF_USE_API_TOKEN, default=use_api_token): bool,
             }
         )
 
@@ -95,10 +95,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
             self._power_p2_p3 = user_input[ATTR_POWER_P2_P3]
             self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
             self._enable_injection_price = user_input[ATTR_ENABLE_INJECTION_PRICE]
-            use_api_token = (
-                user_input[CONF_USE_API_TOKEN] or self._enable_injection_price
-            )
-            if use_api_token:
+            if self._enable_injection_price:
                 existing_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
                 if existing_token:
                     return self.async_create_entry(
@@ -163,7 +160,6 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
     _power_p2_p3: float | None = None
     _better_price_target: str | None = None
     _enable_injection_price: bool | None = None
-    _use_api_token: bool = False
     _api_token: str | None = None
     _api: PVPCData | None = None
 
@@ -185,11 +181,8 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             self._power_p2_p3 = user_input[ATTR_POWER_P2_P3]
             self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
             self._enable_injection_price = user_input[ATTR_ENABLE_INJECTION_PRICE]
-            self._use_api_token = (
-                user_input[CONF_USE_API_TOKEN] or self._enable_injection_price
-            )
 
-            if self._use_api_token:
+            if self._enable_injection_price:
                 return await self.async_step_api_token()
             return self.async_create_entry(
                 title=self._name,
@@ -217,7 +210,6 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                     ATTR_ENABLE_INJECTION_PRICE,
                     default=DEFAULT_ENABLE_INJECTION_PRICE,
                 ): bool,
-                vol.Required(CONF_USE_API_TOKEN, default=False): bool,
             }
         )
         return self.async_show_form(step_id="user", data_schema=data_schema)
@@ -240,7 +232,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         auth_ok = True
 
-        if self._use_api_token:
+        if self._api_token:
             if not self._api:
                 self._api = PVPCData(session=async_get_clientsession(self.hass))
             auth_ok = await self._api.check_api_token(dt_util.utcnow(), self._api_token)
@@ -256,7 +248,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             ATTR_POWER_P2_P3: self._power_p2_p3,
             ATTR_BETTER_PRICE_TARGET: self._better_price_target,
             ATTR_ENABLE_INJECTION_PRICE: self._enable_injection_price,
-            CONF_API_TOKEN: self._api_token if self._use_api_token else None,
+            CONF_API_TOKEN: self._api_token,
         }
 
         if self.source == SOURCE_REAUTH:
@@ -268,7 +260,6 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_reauth(self, entry_data: Mapping[str, Any]):
         """Re-authentication step."""
         self._api_token = entry_data.get(CONF_API_TOKEN)
-        self._use_api_token = self._api_token is not None
         self._name = entry_data[CONF_NAME]
         self._tariff = entry_data[ATTR_TARIFF]
         self._power_p1 = entry_data.get(ATTR_POWER_P1, entry_data.get(LEGACY_ATTR_POWER))
@@ -279,7 +270,8 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET
         )
         self._enable_injection_price = entry_data.get(
-            ATTR_ENABLE_INJECTION_PRICE, DEFAULT_ENABLE_INJECTION_PRICE
+            ATTR_ENABLE_INJECTION_PRICE,
+            self._api_token is not None or DEFAULT_ENABLE_INJECTION_PRICE,
         )
         if self._power_p1 is None:
             self._power_p1 = DEFAULT_POWER_KW
@@ -291,12 +283,10 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
         """Confirm re-authentication."""
         schema = vol.Schema(
             {
-                vol.Required(CONF_USE_API_TOKEN, default=self._use_api_token): bool,
-                vol.Optional(CONF_API_TOKEN, default=self._api_token): str,
+                vol.Required(CONF_API_TOKEN, default=self._api_token): str,
             }
         )
         if user_input:
             self._api_token = user_input.get(CONF_API_TOKEN)
-            self._use_api_token = user_input[CONF_USE_API_TOKEN]
             return await self._async_verify("reauth_confirm")
         return self.async_show_form(step_id="reauth_confirm", data_schema=schema)

@@ -2,10 +2,10 @@
   "config": {
     "abort": {
       "already_configured": "Esta integración ya está configurada.",
-      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
+      "reauth_successful": "Reautenticación completada."
     },
     "error": {
-      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]"
+      "invalid_auth": "Autenticación inválida."
     },
     "step": {
       "api_token": {
@@ -18,20 +18,18 @@
       "reauth_confirm": {
         "data": {
           "api_token": "API Token",
-          "description": "Reautentícate con un token válido o desactívalo",
-          "use_api_token": "Habilitar token personal de la API de ESIOS para acceso privado"
+          "description": "Reautentícate con un token válido"
         }
       },
       "user": {
-        "description": "Activa el token de la API solo si necesitas indicadores extra como el precio de inyección. PVPC funciona sin él.",
+        "description": "Activa el precio de inyección solo si lo necesitas. Se te pedirá un token de la API. PVPC funciona sin él.",
         "data": {
           "name": "Nombre del sensor",
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "tariff": "Tarifa aplicable por zona geográfica",
           "better_price_target": "Objetivo de mejor precio",
-          "enable_injection_price": "Activar precio de inyección",
-          "use_api_token": "Habilitar token personal de la API de ESIOS para acceso privado"
+          "enable_injection_price": "Activar precio de inyección"
         }
       }
     }
@@ -46,13 +44,12 @@
         "title": "Token de la API de ESIOS"
       },
       "init": {
-        "description": "Activa el token de la API solo si necesitas indicadores extra como el precio de inyección.",
+        "description": "Activa el precio de inyección solo si lo necesitas. Se te pedirá un token de la API.",
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "better_price_target": "Objetivo de mejor precio",
-          "enable_injection_price": "Activar precio de inyección",
-          "use_api_token": "Habilitar token personal de la API de ESIOS para acceso privado"
+          "enable_injection_price": "Activar precio de inyección"
         }
       }
     }

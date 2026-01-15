@@ -2,10 +2,10 @@
   "config": {
     "abort": {
       "already_configured": "Diese Integration ist bereits konfiguriert.",
-      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
+      "reauth_successful": "Erneute Authentifizierung erfolgreich."
     },
     "error": {
-      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]"
+      "invalid_auth": "Ungültige Authentifizierung."
     },
     "step": {
       "api_token": {
@@ -18,20 +18,18 @@
       "reauth_confirm": {
         "data": {
           "api_token": "API Token",
-          "description": "Mit einem gueltigen Token erneut authentifizieren oder deaktivieren",
-          "use_api_token": "ESIOS-Personen-API-Token fuer privaten Zugriff aktivieren"
+          "description": "Mit einem gueltigen Token erneut authentifizieren"
         }
       },
       "user": {
-        "description": "Aktiviere den API-Token nur, wenn du zusaetzliche Indikatoren wie den Einspeisepreis brauchst. PVPC funktioniert auch ohne Token.",
+        "description": "Aktiviere den Einspeisepreis nur, wenn du ihn brauchst. Danach wirst du nach einem API-Token gefragt. PVPC funktioniert auch ohne Token.",
         "data": {
           "name": "Sensorname",
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "tariff": "Geltender Tarif nach geografischer Zone",
           "better_price_target": "Ziel fuer besseren Preis",
-          "enable_injection_price": "Einspeisepreis aktivieren",
-          "use_api_token": "ESIOS-Personen-API-Token fuer privaten Zugriff aktivieren"
+          "enable_injection_price": "Einspeisepreis aktivieren"
         }
       }
     }
@@ -46,13 +44,12 @@
         "title": "ESIOS-API-Token"
       },
       "init": {
-        "description": "Aktiviere den API-Token nur, wenn du zusaetzliche Indikatoren wie den Einspeisepreis brauchst.",
+        "description": "Aktiviere den Einspeisepreis nur, wenn du ihn brauchst. Danach wirst du nach einem API-Token gefragt.",
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "better_price_target": "Ziel fuer besseren Preis",
-          "enable_injection_price": "Einspeisepreis aktivieren",
-          "use_api_token": "ESIOS-Personen-API-Token fuer privaten Zugriff aktivieren"
+          "enable_injection_price": "Einspeisepreis aktivieren"
         }
       }
     }

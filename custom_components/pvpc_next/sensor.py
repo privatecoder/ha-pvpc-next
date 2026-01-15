@@ -16,6 +16,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     CURRENCY_EURO,
+    CONF_API_TOKEN,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
     UnitOfEnergy,
@@ -478,10 +479,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up the electricity price sensor from config_entry."""
     coordinator = entry.runtime_data
-    enable_injection_price = entry.options.get(
-        ATTR_ENABLE_INJECTION_PRICE,
-        entry.data.get(ATTR_ENABLE_INJECTION_PRICE, DEFAULT_ENABLE_INJECTION_PRICE),
-    )
+    config = {**entry.data, **entry.options}
+    api_token = config.get(CONF_API_TOKEN)
+    enable_injection_price = config.get(ATTR_ENABLE_INJECTION_PRICE)
+    if enable_injection_price is None:
+        enable_injection_price = (
+            bool(api_token) if api_token else DEFAULT_ENABLE_INJECTION_PRICE
+        )
     sensors = [ElecPriceSensor(coordinator, SENSOR_TYPES[0], entry.unique_id)]
     unique_id = entry.unique_id or entry.entry_id
     sensors.extend(

@@ -23,12 +23,15 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool:
     """Set up pvpc hourly pricing from a config entry."""
     entity_registry = er.async_get(hass)
-    enable_injection_price = entry.options.get(
-        ATTR_ENABLE_INJECTION_PRICE,
-        entry.data.get(ATTR_ENABLE_INJECTION_PRICE, DEFAULT_ENABLE_INJECTION_PRICE),
-    )
+    config = {**entry.data, **entry.options}
+    api_token = config.get(CONF_API_TOKEN)
+    enable_injection_price = config.get(ATTR_ENABLE_INJECTION_PRICE)
+    if enable_injection_price is None:
+        enable_injection_price = (
+            bool(api_token) if api_token else DEFAULT_ENABLE_INJECTION_PRICE
+        )
     sensor_keys = get_enabled_sensor_keys(
-        using_private_api=entry.data.get(CONF_API_TOKEN) is not None,
+        using_private_api=api_token is not None,
         entries=er.async_entries_for_config_entry(entity_registry, entry.entry_id),
         enable_injection_price=enable_injection_price,
     )

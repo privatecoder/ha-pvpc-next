@@ -41,8 +41,7 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
         self, hass: HomeAssistant, entry: PVPCConfigEntry, sensor_keys: set[str]
     ) -> None:
         """Initialize."""
-        config = entry.data.copy()
-        config.update({attr: value for attr, value in entry.options.items() if value})
+        config = {**entry.data, **entry.options}
 
         power_p1 = config.get(ATTR_POWER_P1, config.get(LEGACY_ATTR_POWER))
         power_p2_p3 = config.get(ATTR_POWER_P2_P3, config.get(LEGACY_ATTR_POWER_P3))
