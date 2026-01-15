@@ -495,8 +495,7 @@ async def async_setup_entry(
     if coordinator.api.using_private_api:
         extra_sensors = []
         if enable_injection_price:
-            extra_sensors.append(SENSOR_TYPES[1])
-        extra_sensors.extend(SENSOR_TYPES[2:])
+            extra_sensors.extend(SENSOR_TYPES[1:])
         sensors.extend(
             ElecPriceSensor(coordinator, sensor_desc, entry.unique_id)
             for sensor_desc in extra_sensors
