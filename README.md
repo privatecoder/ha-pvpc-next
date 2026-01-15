@@ -44,12 +44,12 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 
 - Public (no token, PVPC only): `https://api.esios.ree.es/archives/70/download_json?locale=es&date=YYYY-MM-DD`
 - Token-based: `https://api.esios.ree.es/indicators/{indicator_id}?start_date=YYYY-MM-DDT00:00&end_date=YYYY-MM-DDT23:59`
-- Indicators fetched with a token:
-  - `1001` (PVPC)
-  - `1739` (Injection)
-  - `1900` (MAG tax)
-  - `10211` (OMIE Price)
-- The API token is sent via headers (`x-api-key` and `Authorization`), not in the URL.
+  - Indicators fetched with a token:
+    - `1001` (PVPC)
+    - `1739` (Injection)
+    - `1900` (MAG tax)
+    - `10211` (OMIE Price)
+  - The API token is sent via headers (`x-api-key` and `Authorization`).
 
 ---
 
