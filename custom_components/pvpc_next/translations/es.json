@@ -1,7 +1,7 @@
 {
   "config": {
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_service%]",
+      "already_configured": "Esta integración ya está configurada.",
       "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
     },
     "error": {
@@ -19,7 +19,7 @@
         "data": {
           "api_token": "API Token",
           "description": "Reautentícate con un token válido o desactívalo",
-          "use_api_token": "[%key:component::pvpc_hourly_pricing::config::step::user::data::use_api_token%]"
+          "use_api_token": "Habilitar token personal de la API de ESIOS para acceso privado"
         }
       },
       "user": {
@@ -39,14 +39,14 @@
         "data": {
           "api_token": "API Token"
         },
-        "description": "[%key:component::pvpc_hourly_pricing::config::step::api_token::description%]",
-        "title": "[%key:component::pvpc_hourly_pricing::config::step::api_token::title%]"
+        "description": "Para usar la API ampliada debes solicitar un token personal enviando un correo a {mail_to_link}.",
+        "title": "Token de la API de ESIOS"
       },
       "init": {
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
-          "use_api_token": "[%key:component::pvpc_hourly_pricing::config::step::user::data::use_api_token%]"
+          "use_api_token": "Habilitar token personal de la API de ESIOS para acceso privado"
         }
       }
     }
