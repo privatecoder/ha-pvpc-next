@@ -1,0 +1,54 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_service%]",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
+    },
+    "error": {
+      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]"
+    },
+    "step": {
+      "api_token": {
+        "data": {
+          "api_token": "API Token"
+        },
+        "description": "Para usar la API ampliada debes solicitar un token personal enviando un correo a {mail_to_link}.",
+        "title": "Token de la API de ESIOS"
+      },
+      "reauth_confirm": {
+        "data": {
+          "api_token": "API Token",
+          "description": "Reautentícate con un token válido o desactívalo",
+          "use_api_token": "[%key:component::pvpc_hourly_pricing::config::step::user::data::use_api_token%]"
+        }
+      },
+      "user": {
+        "data": {
+          "name": "Nombre del sensor",
+          "power_p1": "P1 (punta) (kW)",
+          "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
+          "tariff": "Tarifa aplicable por zona geográfica",
+          "use_api_token": "Habilitar token personal de la API de ESIOS para acceso privado"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "api_token": {
+        "data": {
+          "api_token": "API Token"
+        },
+        "description": "[%key:component::pvpc_hourly_pricing::config::step::api_token::description%]",
+        "title": "[%key:component::pvpc_hourly_pricing::config::step::api_token::title%]"
+      },
+      "init": {
+        "data": {
+          "power_p1": "P1 (punta) (kW)",
+          "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
+          "use_api_token": "[%key:component::pvpc_hourly_pricing::config::step::user::data::use_api_token%]"
+        }
+      }
+    }
+  }
+}
