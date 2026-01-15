@@ -32,7 +32,13 @@ from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .aiopvpc.const import KEY_INJECTION, KEY_MAG, KEY_OMIE, KEY_PVPC
+from .aiopvpc.const import (
+    KEY_INJECTION,
+    KEY_MAG,
+    KEY_OMIE,
+    KEY_PVPC,
+    SENSOR_KEY_TO_DATAID,
+)
 from .aiopvpc.utils import ensure_utc_time
 from .const import (
     ATTR_ENABLE_PRIVATE_API,
@@ -235,6 +241,14 @@ def _price_level_from_ratio(price_ratio: float) -> str:
     return "very_expensive"
 
 
+def _data_id_value(sensor_key: str) -> StateType:
+    return SENSOR_KEY_TO_DATAID.get(sensor_key)
+
+
+def _api_source_label(coordinator: ElecPricesDataUpdateCoordinator) -> str:
+    return "private" if coordinator.api.using_private_api else "public"
+
+
 SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
         key=KEY_PVPC,
@@ -278,6 +292,13 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         name="PVPC Data ID",
         attribute_key="data_id",
         icon="mdi:identifier",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    PVPCAttributeSensorDescription(
+        key="pvpc_api_source",
+        name="API Source",
+        value_fn=_api_source_label,
+        icon="mdi:api",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     PVPCAttributeSensorDescription(
@@ -401,6 +422,32 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         update_on_hour=True,
     ),
 )
+
+PRIVATE_API_ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
+    PVPCAttributeSensorDescription(
+        key="injection_price_data_id",
+        name="Injection Price Data ID",
+        value_fn=lambda _coordinator: _data_id_value(KEY_INJECTION),
+        icon="mdi:identifier",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    PVPCAttributeSensorDescription(
+        key="mag_tax_data_id",
+        name="MAG Tax Data ID",
+        value_fn=lambda _coordinator: _data_id_value(KEY_MAG),
+        icon="mdi:identifier",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+    PVPCAttributeSensorDescription(
+        key="omie_price_data_id",
+        name="OMIE Price Data ID",
+        value_fn=lambda _coordinator: _data_id_value(KEY_OMIE),
+        icon="mdi:identifier",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+)
 # pylint: enable=unexpected-keyword-arg
 _PRICE_SENSOR_ATTRIBUTES_MAP = {
     "name": "data_name",
@@ -495,6 +542,11 @@ async def async_setup_entry(
         PVPCAttributeSensor(coordinator, sensor_desc, unique_id)
         for sensor_desc in ATTRIBUTE_SENSOR_TYPES
     )
+    if enable_private_api and coordinator.api.using_private_api:
+        sensors.extend(
+            PVPCAttributeSensor(coordinator, sensor_desc, unique_id)
+            for sensor_desc in PRIVATE_API_ATTRIBUTE_SENSOR_TYPES
+        )
     if coordinator.api.using_private_api:
         extra_sensors = []
         if enable_private_api:
