@@ -11,7 +11,7 @@ from itertools import groupby
 from operator import itemgetter
 from typing import Any
 
-from aiopvpc.const import (
+from .const import (
     DataSource,
     EsiosResponse,
     GEOZONE_ID2NAME,
