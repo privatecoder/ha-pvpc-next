@@ -33,14 +33,19 @@ def get_enabled_sensor_keys(
     if len(entries) > 1:
         # activate only enabled sensors
         sensor_keys: set[str] = set()
+        seen_injection = False
         for sensor in entries:
             if sensor.disabled:
                 continue
             sensor_key = _ha_uniqueid_to_sensor_key.get(sensor.unique_id)
-            if sensor_key == KEY_INJECTION and not enable_injection_price:
-                continue
+            if sensor_key == KEY_INJECTION:
+                seen_injection = True
+                if not enable_injection_price:
+                    continue
             if sensor_key is not None:
                 sensor_keys.add(sensor_key)
+        if enable_injection_price and not seen_injection:
+            sensor_keys.add(KEY_INJECTION)
         return sensor_keys
     # default sensors when enabling token access
     sensor_keys = {KEY_PVPC}
