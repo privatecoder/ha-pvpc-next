@@ -36,7 +36,7 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Change Better Price Target via **Settings -> Devices & Integrations -> PVPC Next -> Configure**.
 - If no target is found, Better Price sensors show Unknown; if price data is missing, they show Unavailable.
 - The old "PVPC" sensor is now "Current Price" and keeps the remaining attributes that are not exposed as separate sensors.
-- Injection Price is optional and disabled by default; it requires an ESIOS API token and can be enabled in **Configure**.
+- Private API usage is optional and disabled by default; it requires an ESIOS API token and can be enabled in **Configure** (enables Injection Price, MAG tax and OMIE Price sensors).
 
 ---
 
