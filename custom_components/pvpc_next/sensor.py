@@ -402,10 +402,21 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
 )
 # pylint: enable=unexpected-keyword-arg
 _PRICE_SENSOR_ATTRIBUTES_MAP = {
+    "data_id": "data_id",
     "name": "data_name",
+    "tariff": "tariff",
+    "period": "period",
+    "available_power": "available_power",
+    "next_period": "next_period",
+    "hours_to_next_period": "hours_to_next_period",
+    "next_better_price": "next_better_price",
+    "hours_to_better_price": "hours_to_better_price",
+    "num_better_prices_ahead": "num_better_prices_ahead",
     "price_position": "price_position",
     "price_ratio": "price_ratio",
+    "max_price": "max_price",
     "max_price_at": "max_price_at",
+    "min_price": "min_price",
     "min_price_at": "min_price_at",
     "next_best_at": "next_best_at",
     "price_00h": "price_00h",
