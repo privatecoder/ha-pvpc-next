@@ -14,7 +14,14 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import CURRENCY_EURO, UnitOfEnergy, UnitOfPower, UnitOfTime
+from homeassistant.const import (
+    CURRENCY_EURO,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
@@ -26,7 +33,7 @@ from homeassistant.util import dt as dt_util
 
 from .aiopvpc.const import KEY_INJECTION, KEY_MAG, KEY_OMIE, KEY_PVPC
 from .aiopvpc.utils import ensure_utc_time
-from .const import DOMAIN
+from .const import DOMAIN, normalize_better_price_target
 from .coordinator import ElecPricesDataUpdateCoordinator, PVPCConfigEntry
 from .helpers import make_sensor_unique_id
 
@@ -34,11 +41,16 @@ _LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 1
 _PRICE_UNIT = f"{CURRENCY_EURO}/{UnitOfEnergy.KILO_WATT_HOUR}"
 _PRICE_LEVEL_THRESHOLDS = (
-    (0.2, "very cheap"),
+    (0.2, "very_cheap"),
     (0.4, "cheap"),
     (0.6, "neutral"),
     (0.8, "expensive"),
 )
+_PRICE_LEVEL_TARGET_MAX = {
+    "very_cheap": 0.2,
+    "cheap": 0.4,
+    "neutral": 0.6,
+}
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -48,6 +60,7 @@ class PVPCAttributeSensorDescription(SensorEntityDescription):
     attribute_key: str | None = None
     value_fn: Callable[[ElecPricesDataUpdateCoordinator], StateType] | None = None
     update_every_minute: bool = False
+    update_on_hour: bool = False
 
 
 def _format_time_to_better_price(
@@ -55,26 +68,13 @@ def _format_time_to_better_price(
 ) -> str | None:
     current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
     if not current_prices:
-        return None
-
+        return STATE_UNAVAILABLE
+    next_target = _next_target_price(coordinator)
+    if not next_target:
+        return STATE_UNKNOWN
+    next_ts, _price, _ratio = next_target
     now_utc = ensure_utc_time(dt_util.utcnow())
-    current_hour = now_utc.replace(minute=0, second=0, microsecond=0)
-    current_price = current_prices.get(current_hour)
-    if current_price is None:
-        return None
-
-    next_better_ts = min(
-        (
-            ts_hour
-            for ts_hour, price in current_prices.items()
-            if ts_hour > now_utc and price < current_price
-        ),
-        default=None,
-    )
-    if not next_better_ts:
-        return None
-
-    delta_seconds = int((next_better_ts - now_utc).total_seconds())
+    delta_seconds = int((next_ts - now_utc).total_seconds())
     hours, remainder = divmod(max(delta_seconds, 0), 3600)
     minutes = remainder // 60
     return f"{hours:02d}:{minutes:02d}"
@@ -90,9 +90,45 @@ def _price_ratio_category(
     return _price_level_from_ratio(price_ratio)
 
 
-def _next_price_value(
-    coordinator: ElecPricesDataUpdateCoordinator,
+def _local_timezone(coordinator: ElecPricesDataUpdateCoordinator):
+    tz = dt_util.get_time_zone(coordinator.hass.config.time_zone)
+    return tz or dt_util.UTC
+
+
+def _price_range_for_timestamp(
+    current_prices: dict[datetime, float],
+    ts: datetime,
+    local_tz,
+) -> tuple[float, float] | None:
+    target_date = ts.astimezone(local_tz).date()
+    prices_for_date = [
+        price
+        for price_ts, price in current_prices.items()
+        if price_ts.astimezone(local_tz).date() == target_date
+    ]
+    if not prices_for_date:
+        return None
+    return min(prices_for_date), max(prices_for_date)
+
+
+def _price_ratio_for_timestamp(
+    current_prices: dict[datetime, float],
+    ts: datetime,
+    price: float,
+    local_tz,
 ) -> float | None:
+    price_range = _price_range_for_timestamp(current_prices, ts, local_tz)
+    if not price_range:
+        return None
+    min_price, max_price = price_range
+    if max_price == min_price:
+        return 0.6
+    return round((price - min_price) / (max_price - min_price), 2)
+
+
+def _next_price_candidate(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> tuple[datetime, float] | None:
     current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
     if not current_prices:
         return None
@@ -100,53 +136,96 @@ def _next_price_value(
     current_hour = now_utc.replace(minute=0, second=0, microsecond=0)
     next_hour = current_hour + timedelta(hours=1)
     if next_hour in current_prices:
-        return current_prices[next_hour]
+        return next_hour, current_prices[next_hour]
     next_ts = min((ts for ts in current_prices if ts > current_hour), default=None)
     if not next_ts:
         return None
-    return current_prices[next_ts]
+    return next_ts, current_prices[next_ts]
+
+
+def _next_price_value(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> float | None:
+    next_price = _next_price_candidate(coordinator)
+    if not next_price:
+        return None
+    _ts, price = next_price
+    return price
+
+
+def _next_target_price(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> tuple[datetime, float, float] | None:
+    current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
+    if not current_prices:
+        return None
+    now_utc = ensure_utc_time(dt_util.utcnow())
+    target = normalize_better_price_target(coordinator.better_price_target)
+    max_ratio = _PRICE_LEVEL_TARGET_MAX.get(target)
+    if max_ratio is None:
+        return None
+    local_tz = _local_timezone(coordinator)
+    candidates = [
+        (ts, price, ratio)
+        for ts, price in current_prices.items()
+        if ts > now_utc
+        and (ratio := _price_ratio_for_timestamp(current_prices, ts, price, local_tz))
+        is not None
+        and ratio <= max_ratio
+    ]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda item: item[0])
+
+
+def _better_price_value(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> StateType:
+    current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
+    if not current_prices:
+        return STATE_UNAVAILABLE
+    next_target = _next_target_price(coordinator)
+    if not next_target:
+        return STATE_UNKNOWN
+    _ts, price, _ratio = next_target
+    return price
 
 
 def _next_price_level(
     coordinator: ElecPricesDataUpdateCoordinator,
 ) -> str | None:
-    next_price = _next_price_value(coordinator)
-    if next_price is None:
+    next_price = _next_price_candidate(coordinator)
+    if not next_price:
         return None
+    ts, price = next_price
     current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
     if not current_prices:
         return None
-    min_price = min(current_prices.values())
-    max_price = max(current_prices.values())
-    if max_price == min_price:
-        return "neutral"
-    price_ratio = (next_price - min_price) / (max_price - min_price)
+    local_tz = _local_timezone(coordinator)
+    price_ratio = _price_ratio_for_timestamp(current_prices, ts, price, local_tz)
+    if price_ratio is None:
+        return None
     return _price_level_from_ratio(price_ratio)
 
 
 def _better_price_level(
     coordinator: ElecPricesDataUpdateCoordinator,
 ) -> str | None:
-    attributes = coordinator.api.sensor_attributes.get(KEY_PVPC, {})
-    next_better_price = attributes.get("next_better_price")
-    if next_better_price is None:
-        return None
     current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
     if not current_prices:
-        return None
-    min_price = min(current_prices.values())
-    max_price = max(current_prices.values())
-    if max_price == min_price:
-        return "neutral"
-    price_ratio = (next_better_price - min_price) / (max_price - min_price)
-    return _price_level_from_ratio(price_ratio)
+        return STATE_UNAVAILABLE
+    next_target = _next_target_price(coordinator)
+    if not next_target:
+        return STATE_UNKNOWN
+    _ts, _price, ratio = next_target
+    return _price_level_from_ratio(ratio)
 
 
 def _price_level_from_ratio(price_ratio: float) -> str:
     for threshold, label in _PRICE_LEVEL_THRESHOLDS:
-        if price_ratio < threshold:
+        if price_ratio <= threshold:
             return label
-    return "very expensive"
+    return "very_expensive"
 
 
 SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
@@ -205,6 +284,7 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         name="Current Period",
         attribute_key="period",
         icon="mdi:clock-outline",
+        update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_available_power",
@@ -220,6 +300,7 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         name="Next Period",
         attribute_key="next_period",
         icon="mdi:clock-outline",
+        update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_hours_to_next_period",
@@ -228,6 +309,7 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.HOURS,
         device_class=SensorDeviceClass.DURATION,
         icon="mdi:timer-sand",
+        update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_min_price",
@@ -250,11 +332,12 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
     PVPCAttributeSensorDescription(
         key="pvpc_next_better_price",
         name="Better Price",
-        attribute_key="next_better_price",
+        value_fn=_better_price_value,
         native_unit_of_measurement=_PRICE_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=5,
         icon="mdi:arrow-collapse-down",
+        update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_next_price",
@@ -264,13 +347,17 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=5,
         icon="mdi:arrow-right-bold",
+        update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_next_price_level",
         name="Next Price Level",
         value_fn=_next_price_level,
+        device_class=SensorDeviceClass.ENUM,
+        translation_key="price_level",
         update_every_minute=False,
         icon="mdi:scale-balance",
+        update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_time_to_better_price",
@@ -284,20 +371,27 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         name="Num Better Prices Ahead",
         attribute_key="num_better_prices_ahead",
         icon="mdi:counter",
+        update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_price_ratio_category",
         name="Current Price Level",
         value_fn=_price_ratio_category,
+        device_class=SensorDeviceClass.ENUM,
+        translation_key="price_level",
         update_every_minute=False,
         icon="mdi:scale-balance",
+        update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_better_price_level",
         name="Better Price Level",
         value_fn=_better_price_level,
+        device_class=SensorDeviceClass.ENUM,
+        translation_key="price_level",
         update_every_minute=False,
         icon="mdi:scale-balance",
+        update_on_hour=True,
     ),
 )
 # pylint: enable=unexpected-keyword-arg
@@ -511,10 +605,20 @@ class PVPCAttributeSensor(CoordinatorEntity[ElecPricesDataUpdateCoordinator], Se
                     self.hass, self._update_on_time_change, second=[0]
                 )
             )
+        elif self.entity_description.update_on_hour:
+            self.async_on_remove(
+                async_track_time_change(
+                    self.hass, self._update_on_time_change, minute=[0], second=[0]
+                )
+            )
 
     @callback
-    def _update_on_time_change(self, _now: datetime) -> None:
+    def _update_on_time_change(self, now: datetime) -> None:
         """Refresh state on time changes for time-based attributes."""
+        if self.entity_description.update_on_hour:
+            self.coordinator.api.process_state_and_attributes(
+                self.coordinator.data, KEY_PVPC, now
+            )
         self.async_write_ha_state()
 
     @property

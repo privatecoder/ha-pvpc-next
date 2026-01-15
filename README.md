@@ -19,8 +19,10 @@ PVPC Next is a custom Home Assistant integration that retrieves the Spanish PVPC
 - Hourly PVPC prices for Spain.
 - Sensors for current price and detailed price attributes.
 - Current Price Level: a relative label based on how the current price compares to the daily range (very cheap to very expensive).
-- Better Price Level: the same relative label applied to the next cheaper price ahead, if available.
+- Better Price Target: pick neutral, cheap, or very cheap; Better Price, Better Price In, and Better Price Level point to the next hour that meets the target (or better).
+- Better Price Level: a relative label for the next target price, using the same daily-range scale as Current Price Level.
 - Next Price: the next hourly price after the current hour, plus a matching Next Price Level.
+- If no target is found, Better Price sensors show Unknown; if price data is missing, they show Unavailable.
 - Works with automations and energy dashboards.
 - Lightweight, async, and HA friendly.
 

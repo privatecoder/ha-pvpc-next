@@ -28,6 +28,7 @@
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "tariff": "Applicable tariff by geographic zone",
+          "better_price_target": "Better Price Target",
           "use_api_token": "Enable ESIOS Personal API token for private access"
         }
       }
@@ -46,7 +47,21 @@
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
+          "better_price_target": "Better Price Target",
           "use_api_token": "Enable ESIOS Personal API token for private access"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "price_level": {
+        "state": {
+          "very_cheap": "Very cheap",
+          "cheap": "Cheap",
+          "neutral": "Neutral",
+          "expensive": "Expensive",
+          "very_expensive": "Very expensive"
         }
       }
     }

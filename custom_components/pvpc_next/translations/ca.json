@@ -26,8 +26,9 @@
         "data": {
           "name": "Nom del sensor",
           "power_p1": "P1 (punta) (kW)",
-          "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
+          "power_p2_p3": "P2 (vall) / P3 (pla) (kW)",
           "tariff": "Tarifa aplicable per zona geogràfica",
+          "better_price_target": "Objectiu de millor preu",
           "use_api_token": "Activa el token personal de l'API d'ESIOS per a accés privat"
         }
       }
@@ -46,7 +47,21 @@
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (vall) / P3 (pla) (kW)",
+          "better_price_target": "Objectiu de millor preu",
           "use_api_token": "Activa el token personal de l'API d'ESIOS per a accés privat"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "price_level": {
+        "state": {
+          "very_cheap": "Molt barat",
+          "cheap": "Barat",
+          "neutral": "Neutral",
+          "expensive": "Car",
+          "very_expensive": "Molt car"
         }
       }
     }

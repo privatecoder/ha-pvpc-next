@@ -28,6 +28,7 @@
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "tariff": "Tarifa aplicable por zona geográfica",
+          "better_price_target": "Objetivo de mejor precio",
           "use_api_token": "Habilitar token personal de la API de ESIOS para acceso privado"
         }
       }
@@ -46,7 +47,21 @@
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
+          "better_price_target": "Objetivo de mejor precio",
           "use_api_token": "Habilitar token personal de la API de ESIOS para acceso privado"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "price_level": {
+        "state": {
+          "very_cheap": "Muy barato",
+          "cheap": "Barato",
+          "neutral": "Neutral",
+          "expensive": "Caro",
+          "very_expensive": "Muy caro"
         }
       }
     }

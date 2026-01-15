@@ -16,10 +16,13 @@ from .aiopvpc import BadApiTokenAuthError, DEFAULT_POWER_KW, EsiosApiData, PVPCD
 from .const import (
     ATTR_POWER_P1,
     ATTR_POWER_P2_P3,
+    ATTR_BETTER_PRICE_TARGET,
     ATTR_TARIFF,
     DOMAIN,
+    DEFAULT_BETTER_PRICE_TARGET,
     LEGACY_ATTR_POWER,
     LEGACY_ATTR_POWER_P3,
+    normalize_better_price_target,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,6 +46,9 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
 
         power_p1 = config.get(ATTR_POWER_P1, config.get(LEGACY_ATTR_POWER))
         power_p2_p3 = config.get(ATTR_POWER_P2_P3, config.get(LEGACY_ATTR_POWER_P3))
+        better_price_target = normalize_better_price_target(
+            config.get(ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET)
+        )
         if power_p1 is None:
             power_p1 = DEFAULT_POWER_KW
         if power_p2_p3 is None:
@@ -57,6 +63,7 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
             api_token=config.get(CONF_API_TOKEN),
             sensor_keys=tuple(sensor_keys),
         )
+        self._better_price_target = better_price_target
         super().__init__(
             hass,
             _LOGGER,
@@ -69,6 +76,11 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
     def entry_id(self) -> str:
         """Return entry ID."""
         return self.config_entry.entry_id
+
+    @property
+    def better_price_target(self) -> str:
+        """Return canonical better-price target label."""
+        return self._better_price_target
 
     async def _async_update_data(self) -> EsiosApiData:
         """Update electricity prices from the ESIOS API."""

@@ -25,10 +25,13 @@ from .const import (
     DEFAULT_TARIFF,
     ATTR_POWER_P1,
     ATTR_POWER_P2_P3,
+    ATTR_BETTER_PRICE_TARGET,
     ATTR_TARIFF,
     CONF_USE_API_TOKEN,
     LEGACY_ATTR_POWER,
     LEGACY_ATTR_POWER_P3,
+    DEFAULT_BETTER_PRICE_TARGET,
+    VALID_BETTER_PRICE_TARGET,
     VALID_POWER,
     VALID_TARIFF,
 )
@@ -43,6 +46,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
 
     _power_p1: float | None = None
     _power_p2_p3: float | None = None
+    _better_price_target: str | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options."""
@@ -58,6 +62,10 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
 
         power_p1 = _get_power_value(ATTR_POWER_P1, LEGACY_ATTR_POWER)
         power_p2_p3 = _get_power_value(ATTR_POWER_P2_P3, LEGACY_ATTR_POWER_P3)
+        better_price_target = options.get(
+            ATTR_BETTER_PRICE_TARGET,
+            data.get(ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET),
+        )
         api_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
         use_api_token = api_token is not None
 
@@ -65,6 +73,9 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
             {
                 vol.Required(ATTR_POWER_P1, default=power_p1): VALID_POWER,
                 vol.Required(ATTR_POWER_P2_P3, default=power_p2_p3): VALID_POWER,
+                vol.Required(
+                    ATTR_BETTER_PRICE_TARGET, default=better_price_target
+                ): VALID_BETTER_PRICE_TARGET,
                 vol.Required(CONF_USE_API_TOKEN, default=use_api_token): bool,
             }
         )
@@ -72,6 +83,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
         if user_input is not None:
             self._power_p1 = user_input[ATTR_POWER_P1]
             self._power_p2_p3 = user_input[ATTR_POWER_P2_P3]
+            self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
             if user_input[CONF_USE_API_TOKEN]:
                 return await self.async_step_api_token(user_input)
             return self.async_create_entry(
@@ -79,6 +91,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                 data={
                     ATTR_POWER_P1: self._power_p1,
                     ATTR_POWER_P2_P3: self._power_p2_p3,
+                    ATTR_BETTER_PRICE_TARGET: self._better_price_target,
                     CONF_API_TOKEN: None,
                 },
             )
@@ -94,6 +107,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                 data={
                     ATTR_POWER_P1: self._power_p1,
                     ATTR_POWER_P2_P3: self._power_p2_p3,
+                    ATTR_BETTER_PRICE_TARGET: self._better_price_target,
                     CONF_API_TOKEN: api_token,
                 },
             )
@@ -119,6 +133,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
     _tariff: str | None = None
     _power_p1: float | None = None
     _power_p2_p3: float | None = None
+    _better_price_target: str | None = None
     _use_api_token: bool = False
     _api_token: str | None = None
     _api: PVPCData | None = None
@@ -139,6 +154,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             self._tariff = user_input[ATTR_TARIFF]
             self._power_p1 = user_input[ATTR_POWER_P1]
             self._power_p2_p3 = user_input[ATTR_POWER_P2_P3]
+            self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
             self._use_api_token = user_input[CONF_USE_API_TOKEN]
 
             if self._use_api_token:
@@ -150,6 +166,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                     ATTR_TARIFF: self._tariff,
                     ATTR_POWER_P1: self._power_p1,
                     ATTR_POWER_P2_P3: self._power_p2_p3,
+                    ATTR_BETTER_PRICE_TARGET: self._better_price_target,
                     CONF_API_TOKEN: None,
                 },
             )
@@ -160,6 +177,9 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(ATTR_TARIFF, default=DEFAULT_TARIFF): VALID_TARIFF,
                 vol.Required(ATTR_POWER_P1, default=DEFAULT_POWER_KW): VALID_POWER,
                 vol.Required(ATTR_POWER_P2_P3, default=DEFAULT_POWER_KW): VALID_POWER,
+                vol.Required(
+                    ATTR_BETTER_PRICE_TARGET, default=DEFAULT_BETTER_PRICE_TARGET
+                ): VALID_BETTER_PRICE_TARGET,
                 vol.Required(CONF_USE_API_TOKEN, default=False): bool,
             }
         )
@@ -197,6 +217,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             ATTR_TARIFF: self._tariff,
             ATTR_POWER_P1: self._power_p1,
             ATTR_POWER_P2_P3: self._power_p2_p3,
+            ATTR_BETTER_PRICE_TARGET: self._better_price_target,
             CONF_API_TOKEN: self._api_token if self._use_api_token else None,
         }
 
@@ -215,6 +236,9 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
         self._power_p1 = entry_data.get(ATTR_POWER_P1, entry_data.get(LEGACY_ATTR_POWER))
         self._power_p2_p3 = entry_data.get(
             ATTR_POWER_P2_P3, entry_data.get(LEGACY_ATTR_POWER_P3)
+        )
+        self._better_price_target = entry_data.get(
+            ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET
         )
         if self._power_p1 is None:
             self._power_p1 = DEFAULT_POWER_KW
