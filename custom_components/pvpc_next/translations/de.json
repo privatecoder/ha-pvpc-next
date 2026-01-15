@@ -23,12 +23,14 @@
         }
       },
       "user": {
+        "description": "Aktiviere den API-Token nur, wenn du zusaetzliche Indikatoren wie den Einspeisepreis brauchst. PVPC funktioniert auch ohne Token.",
         "data": {
           "name": "Sensorname",
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "tariff": "Geltender Tarif nach geografischer Zone",
           "better_price_target": "Ziel fuer besseren Preis",
+          "enable_injection_price": "Einspeisepreis aktivieren",
           "use_api_token": "ESIOS-Personen-API-Token fuer privaten Zugriff aktivieren"
         }
       }
@@ -44,10 +46,12 @@
         "title": "ESIOS-API-Token"
       },
       "init": {
+        "description": "Aktiviere den API-Token nur, wenn du zusaetzliche Indikatoren wie den Einspeisepreis brauchst.",
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "better_price_target": "Ziel fuer besseren Preis",
+          "enable_injection_price": "Einspeisepreis aktivieren",
           "use_api_token": "ESIOS-Personen-API-Token fuer privaten Zugriff aktivieren"
         }
       }

@@ -33,7 +33,12 @@ from homeassistant.util import dt as dt_util
 
 from .aiopvpc.const import KEY_INJECTION, KEY_MAG, KEY_OMIE, KEY_PVPC
 from .aiopvpc.utils import ensure_utc_time
-from .const import DOMAIN, normalize_better_price_target
+from .const import (
+    ATTR_ENABLE_INJECTION_PRICE,
+    DEFAULT_ENABLE_INJECTION_PRICE,
+    DOMAIN,
+    normalize_better_price_target,
+)
 from .coordinator import ElecPricesDataUpdateCoordinator, PVPCConfigEntry
 from .helpers import make_sensor_unique_id
 
@@ -473,6 +478,10 @@ async def async_setup_entry(
 ) -> None:
     """Set up the electricity price sensor from config_entry."""
     coordinator = entry.runtime_data
+    enable_injection_price = entry.options.get(
+        ATTR_ENABLE_INJECTION_PRICE,
+        entry.data.get(ATTR_ENABLE_INJECTION_PRICE, DEFAULT_ENABLE_INJECTION_PRICE),
+    )
     sensors = [ElecPriceSensor(coordinator, SENSOR_TYPES[0], entry.unique_id)]
     unique_id = entry.unique_id or entry.entry_id
     sensors.extend(
@@ -480,9 +489,13 @@ async def async_setup_entry(
         for sensor_desc in ATTRIBUTE_SENSOR_TYPES
     )
     if coordinator.api.using_private_api:
+        extra_sensors = []
+        if enable_injection_price:
+            extra_sensors.append(SENSOR_TYPES[1])
+        extra_sensors.extend(SENSOR_TYPES[2:])
         sensors.extend(
             ElecPriceSensor(coordinator, sensor_desc, entry.unique_id)
-            for sensor_desc in SENSOR_TYPES[1:]
+            for sensor_desc in extra_sensors
         )
     async_add_entities(sensors)
 

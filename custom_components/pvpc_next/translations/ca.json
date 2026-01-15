@@ -23,12 +23,14 @@
         }
       },
       "user": {
+        "description": "Activa el token de l'API només si necessites indicadors extra com el preu d'injecció. PVPC funciona sense ell.",
         "data": {
           "name": "Nom del sensor",
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (vall) / P3 (pla) (kW)",
           "tariff": "Tarifa aplicable per zona geogràfica",
           "better_price_target": "Objectiu de millor preu",
+          "enable_injection_price": "Activa el preu d'injecció",
           "use_api_token": "Activa el token personal de l'API d'ESIOS per a accés privat"
         }
       }
@@ -44,10 +46,12 @@
         "title": "Token de l'API d'ESIOS"
       },
       "init": {
+        "description": "Activa el token de l'API només si necessites indicadors extra com el preu d'injecció.",
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (vall) / P3 (pla) (kW)",
           "better_price_target": "Objectiu de millor preu",
+          "enable_injection_price": "Activa el preu d'injecció",
           "use_api_token": "Activa el token personal de l'API d'ESIOS per a accés privat"
         }
       }

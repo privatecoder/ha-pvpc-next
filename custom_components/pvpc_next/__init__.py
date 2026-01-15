@@ -8,9 +8,11 @@ from .aiopvpc.const import TARIFF_ALIASES, normalize_tariff
 from .coordinator import ElecPricesDataUpdateCoordinator, PVPCConfigEntry
 from .helpers import get_enabled_sensor_keys
 from .const import (
+    ATTR_ENABLE_INJECTION_PRICE,
     ATTR_POWER_P1,
     ATTR_POWER_P2_P3,
     ATTR_TARIFF,
+    DEFAULT_ENABLE_INJECTION_PRICE,
     LEGACY_ATTR_POWER,
     LEGACY_ATTR_POWER_P3,
 )
@@ -21,9 +23,14 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool:
     """Set up pvpc hourly pricing from a config entry."""
     entity_registry = er.async_get(hass)
+    enable_injection_price = entry.options.get(
+        ATTR_ENABLE_INJECTION_PRICE,
+        entry.data.get(ATTR_ENABLE_INJECTION_PRICE, DEFAULT_ENABLE_INJECTION_PRICE),
+    )
     sensor_keys = get_enabled_sensor_keys(
         using_private_api=entry.data.get(CONF_API_TOKEN) is not None,
         entries=er.async_entries_for_config_entry(entity_registry, entry.entry_id),
+        enable_injection_price=enable_injection_price,
     )
     coordinator = ElecPricesDataUpdateCoordinator(hass, entry, sensor_keys)
     await coordinator.async_config_entry_first_refresh()
