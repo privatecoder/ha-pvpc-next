@@ -8,12 +8,11 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 
 ## What's new vs the integrated version
 
-- New PVPC sensors that expose key attributes as standalone entities (e.g., current period, next period, min/max price, price level, and time to better price).
+- New PVPC sensors that expose key attributes as standalone entities (e.g., tariff, current/next period, hours to next period, min/max price, price levels, better prices ahead, and time to better price).
 - Calculated sensors for price levels (current, next and next better price).
 - Configurable Better Price Target to pick the next neutral/cheap/very cheap window.
 - National holidays handled via the `holidays` library (no more hardcoded yearly tables).
 - General bugfixes, hardening, and stability improvements.
-- Code quality pass with pylint score **10/10**.
 
 ---
 
@@ -24,8 +23,18 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Current Price Level, Better Price Level, and Next Price Level sensors.
 - Better Price, Better Price In, and Next Price sensors.
 - Configurable Better Price Target for those Better Price sensors.
+- Tariff selection by geographic zone and contracted power (P1 and P2/P3).
+- Diagnostic sensors for API source and data IDs (PVPC, and optional private API data IDs).
 - Works with automations and energy dashboards.
 - Lightweight, async, and HA friendly.
+
+---
+
+## Sensors
+
+- Price sensors: Current Price; private API adds Injection Price, MAG tax, and OMIE Price (MAG tax and OMIE Price are disabled by default).
+- Attribute sensors: Tariff, Current Period, Next Period, Hours To Next Period, Available Power, Min Price, Max Price, Better Price, Next Price, Better Price In, Better Prices Ahead, Current Price Level, Next Price Level, Better Price Level.
+- Diagnostic sensors: PVPC Data ID, API Source; private API adds Injection Price Data ID, MAG Tax Data ID, and OMIE Price Data ID (MAG/OMIE data IDs are disabled by default).
 
 ---
 
@@ -33,10 +42,19 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 
 - Price levels are relative to each day's price range (very cheap to very expensive).
 - Better Price Target options: neutral, cheap, very cheap. Better Price, Better Price In, and Better Price Level point to the next hour that meets the target or better.
+- Tariff selection controls the geographic zone (Península/Baleares/Canarias vs Ceuta/Melilla).
+- Contracted power (P1 and P2/P3) is used to compute the Available Power sensor (in W).
 - Change Better Price Target via **Settings -> Devices & Integrations -> PVPC Next -> Configure**.
 - If no target is found, Better Price sensors show Unknown; if price data is missing, they show Unavailable.
 - The old "PVPC" sensor is now "Current Price" and keeps the remaining attributes that are not exposed as separate sensors.
 - Private API usage is optional and disabled by default; it requires an ESIOS API token and can be enabled in **Configure** (enables Injection Price, MAG tax and OMIE Price sensors).
+
+---
+
+## Notes
+
+- The popular `danimart1991/pvpc-hourly-pricing-card` does not work with this integration, but there is a compatible fork available [here](https://github.com/privatecoder/pvpc-hourly-pricing-card).
+- There is also an open issue requesting the original maintainer to merge these compatibility changes upstream.
 
 ---
 
