@@ -26,12 +26,13 @@ from .const import (
     ATTR_POWER_P1,
     ATTR_POWER_P2_P3,
     ATTR_BETTER_PRICE_TARGET,
-    ATTR_ENABLE_INJECTION_PRICE,
+    ATTR_ENABLE_PRIVATE_API,
     ATTR_TARIFF,
+    LEGACY_ATTR_ENABLE_INJECTION_PRICE,
     LEGACY_ATTR_POWER,
     LEGACY_ATTR_POWER_P3,
     DEFAULT_BETTER_PRICE_TARGET,
-    DEFAULT_ENABLE_INJECTION_PRICE,
+    DEFAULT_ENABLE_PRIVATE_API,
     VALID_BETTER_PRICE_TARGET,
     VALID_POWER,
     VALID_TARIFF,
@@ -48,7 +49,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
     _power_p1: float | None = None
     _power_p2_p3: float | None = None
     _better_price_target: str | None = None
-    _enable_injection_price: bool | None = None
+    _enable_private_api: bool | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options."""
@@ -69,12 +70,16 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
             data.get(ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET),
         )
         api_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
-        enable_injection_price = options.get(ATTR_ENABLE_INJECTION_PRICE)
-        if enable_injection_price is None:
-            enable_injection_price = data.get(ATTR_ENABLE_INJECTION_PRICE)
-        if enable_injection_price is None:
-            enable_injection_price = (
-                bool(api_token) if api_token else DEFAULT_ENABLE_INJECTION_PRICE
+        enable_private_api = options.get(ATTR_ENABLE_PRIVATE_API)
+        if enable_private_api is None:
+            enable_private_api = options.get(LEGACY_ATTR_ENABLE_INJECTION_PRICE)
+        if enable_private_api is None:
+            enable_private_api = data.get(ATTR_ENABLE_PRIVATE_API)
+        if enable_private_api is None:
+            enable_private_api = data.get(LEGACY_ATTR_ENABLE_INJECTION_PRICE)
+        if enable_private_api is None:
+            enable_private_api = (
+                bool(api_token) if api_token else DEFAULT_ENABLE_PRIVATE_API
             )
 
         schema = vol.Schema(
@@ -84,9 +89,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                 vol.Required(
                     ATTR_BETTER_PRICE_TARGET, default=better_price_target
                 ): VALID_BETTER_PRICE_TARGET,
-                vol.Required(
-                    ATTR_ENABLE_INJECTION_PRICE, default=enable_injection_price
-                ): bool,
+                vol.Required(ATTR_ENABLE_PRIVATE_API, default=enable_private_api): bool,
             }
         )
 
@@ -94,8 +97,8 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
             self._power_p1 = user_input[ATTR_POWER_P1]
             self._power_p2_p3 = user_input[ATTR_POWER_P2_P3]
             self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
-            self._enable_injection_price = user_input[ATTR_ENABLE_INJECTION_PRICE]
-            if self._enable_injection_price:
+            self._enable_private_api = user_input[ATTR_ENABLE_PRIVATE_API]
+            if self._enable_private_api:
                 existing_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
                 if existing_token:
                     return self.async_create_entry(
@@ -104,7 +107,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                             ATTR_POWER_P1: self._power_p1,
                             ATTR_POWER_P2_P3: self._power_p2_p3,
                             ATTR_BETTER_PRICE_TARGET: self._better_price_target,
-                            ATTR_ENABLE_INJECTION_PRICE: self._enable_injection_price,
+                            ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                             CONF_API_TOKEN: existing_token,
                         },
                     )
@@ -115,7 +118,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                     ATTR_POWER_P1: self._power_p1,
                     ATTR_POWER_P2_P3: self._power_p2_p3,
                     ATTR_BETTER_PRICE_TARGET: self._better_price_target,
-                    ATTR_ENABLE_INJECTION_PRICE: self._enable_injection_price,
+                    ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: None,
                 },
             )
@@ -132,7 +135,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                     ATTR_POWER_P1: self._power_p1,
                     ATTR_POWER_P2_P3: self._power_p2_p3,
                     ATTR_BETTER_PRICE_TARGET: self._better_price_target,
-                    ATTR_ENABLE_INJECTION_PRICE: self._enable_injection_price,
+                    ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: api_token,
                 },
             )
@@ -153,13 +156,13 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
 class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle config flow for PVPC Next."""
 
-    VERSION = 3
+    VERSION = 4
     _name: str | None = None
     _tariff: str | None = None
     _power_p1: float | None = None
     _power_p2_p3: float | None = None
     _better_price_target: str | None = None
-    _enable_injection_price: bool | None = None
+    _enable_private_api: bool | None = None
     _api_token: str | None = None
     _api: PVPCData | None = None
 
@@ -180,9 +183,9 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             self._power_p1 = user_input[ATTR_POWER_P1]
             self._power_p2_p3 = user_input[ATTR_POWER_P2_P3]
             self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
-            self._enable_injection_price = user_input[ATTR_ENABLE_INJECTION_PRICE]
+            self._enable_private_api = user_input[ATTR_ENABLE_PRIVATE_API]
 
-            if self._enable_injection_price:
+            if self._enable_private_api:
                 return await self.async_step_api_token()
             return self.async_create_entry(
                 title=self._name,
@@ -192,7 +195,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                     ATTR_POWER_P1: self._power_p1,
                     ATTR_POWER_P2_P3: self._power_p2_p3,
                     ATTR_BETTER_PRICE_TARGET: self._better_price_target,
-                    ATTR_ENABLE_INJECTION_PRICE: self._enable_injection_price,
+                    ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: None,
                 },
             )
@@ -207,8 +210,8 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                     ATTR_BETTER_PRICE_TARGET, default=DEFAULT_BETTER_PRICE_TARGET
                 ): VALID_BETTER_PRICE_TARGET,
                 vol.Required(
-                    ATTR_ENABLE_INJECTION_PRICE,
-                    default=DEFAULT_ENABLE_INJECTION_PRICE,
+                    ATTR_ENABLE_PRIVATE_API,
+                    default=DEFAULT_ENABLE_PRIVATE_API,
                 ): bool,
             }
         )
@@ -247,7 +250,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             ATTR_POWER_P1: self._power_p1,
             ATTR_POWER_P2_P3: self._power_p2_p3,
             ATTR_BETTER_PRICE_TARGET: self._better_price_target,
-            ATTR_ENABLE_INJECTION_PRICE: self._enable_injection_price,
+            ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
             CONF_API_TOKEN: self._api_token,
         }
 
@@ -269,9 +272,12 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
         self._better_price_target = entry_data.get(
             ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET
         )
-        self._enable_injection_price = entry_data.get(
-            ATTR_ENABLE_INJECTION_PRICE,
-            self._api_token is not None or DEFAULT_ENABLE_INJECTION_PRICE,
+        self._enable_private_api = entry_data.get(
+            ATTR_ENABLE_PRIVATE_API,
+            entry_data.get(
+                LEGACY_ATTR_ENABLE_INJECTION_PRICE,
+                self._api_token is not None or DEFAULT_ENABLE_PRIVATE_API,
+            ),
         )
         if self._power_p1 is None:
             self._power_p1 = DEFAULT_POWER_KW

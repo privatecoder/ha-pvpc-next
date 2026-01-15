@@ -8,11 +8,12 @@ from .aiopvpc.const import TARIFF_ALIASES, normalize_tariff
 from .coordinator import ElecPricesDataUpdateCoordinator, PVPCConfigEntry
 from .helpers import get_enabled_sensor_keys
 from .const import (
-    ATTR_ENABLE_INJECTION_PRICE,
+    ATTR_ENABLE_PRIVATE_API,
     ATTR_POWER_P1,
     ATTR_POWER_P2_P3,
     ATTR_TARIFF,
-    DEFAULT_ENABLE_INJECTION_PRICE,
+    DEFAULT_ENABLE_PRIVATE_API,
+    LEGACY_ATTR_ENABLE_INJECTION_PRICE,
     LEGACY_ATTR_POWER,
     LEGACY_ATTR_POWER_P3,
 )
@@ -25,17 +26,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool
     entity_registry = er.async_get(hass)
     config = {**entry.data, **entry.options}
     api_token = config.get(CONF_API_TOKEN)
-    enable_injection_price = config.get(ATTR_ENABLE_INJECTION_PRICE)
-    if enable_injection_price is None:
-        enable_injection_price = (
-            bool(api_token) if api_token else DEFAULT_ENABLE_INJECTION_PRICE
+    enable_private_api = config.get(ATTR_ENABLE_PRIVATE_API)
+    if enable_private_api is None:
+        enable_private_api = config.get(LEGACY_ATTR_ENABLE_INJECTION_PRICE)
+    if enable_private_api is None:
+        enable_private_api = (
+            bool(api_token) if api_token else DEFAULT_ENABLE_PRIVATE_API
         )
+    use_private_api = bool(api_token) and enable_private_api
     sensor_keys = get_enabled_sensor_keys(
-        using_private_api=api_token is not None,
+        using_private_api=use_private_api,
         entries=er.async_entries_for_config_entry(entity_registry, entry.entry_id),
-        enable_injection_price=enable_injection_price,
+        enable_private_api=enable_private_api,
     )
-    coordinator = ElecPricesDataUpdateCoordinator(hass, entry, sensor_keys)
+    coordinator = ElecPricesDataUpdateCoordinator(
+        hass, entry, sensor_keys, use_private_api
+    )
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
@@ -50,7 +56,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> boo
 
 async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool:
     """Migrate old config entries to the current schema."""
-    if entry.version >= 3:
+    if entry.version >= 4:
         return True
 
     data = {**entry.data}
@@ -76,6 +82,13 @@ async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bo
             if ATTR_POWER_P2_P3 not in store:
                 store[ATTR_POWER_P2_P3] = store[LEGACY_ATTR_POWER_P3]
             store.pop(LEGACY_ATTR_POWER_P3, None)
+            migrated = True
+        if LEGACY_ATTR_ENABLE_INJECTION_PRICE in store:
+            if ATTR_ENABLE_PRIVATE_API not in store:
+                store[ATTR_ENABLE_PRIVATE_API] = store[
+                    LEGACY_ATTR_ENABLE_INJECTION_PRICE
+                ]
+            store.pop(LEGACY_ATTR_ENABLE_INJECTION_PRICE, None)
             migrated = True
     unique_id = entry.unique_id
     updated_unique_id = TARIFF_ALIASES.get(unique_id, unique_id)
@@ -107,6 +120,6 @@ async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bo
         data=data if migrated else None,
         options=options if migrated else None,
         unique_id=updated_unique_id if updated_unique_id != unique_id else None,
-        version=3,
+        version=4,
     )
     return True

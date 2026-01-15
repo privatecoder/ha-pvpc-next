@@ -22,14 +22,14 @@
         }
       },
       "user": {
-        "description": "Activa el preu d'injecció només si el necessites. Se't demanarà un token de l'API. PVPC funciona sense ell.",
+        "description": "PVPC funciona sense token (API pública). Si tens un token, activa la casella de sota (API privada), amb la qual també es poden obtenir el preu d'injecció, el preu majorista day-ahead (OMIE) i l'ajust de gas regulat (MAG tax).",
         "data": {
           "name": "Nom del sensor",
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (vall) / P3 (pla) (kW)",
           "tariff": "Tarifa aplicable per zona geogràfica",
           "better_price_target": "Objectiu de millor preu",
-          "enable_injection_price": "Activa el preu d'injecció"
+          "enable_private_api": "Activa l'obtenció amb token d'API (API privada)"
         }
       }
     }
@@ -44,12 +44,12 @@
         "title": "Token de l'API d'ESIOS"
       },
       "init": {
-        "description": "Activa el preu d'injecció només si el necessites. Se't demanarà un token de l'API.",
+        "description": "PVPC funciona sense token (API pública). Si tens un token, activa la casella de sota (API privada), amb la qual també es poden obtenir el preu d'injecció, el preu majorista day-ahead (OMIE) i l'ajust de gas regulat (MAG tax).",
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (vall) / P3 (pla) (kW)",
           "better_price_target": "Objectiu de millor preu",
-          "enable_injection_price": "Activa el preu d'injecció"
+          "enable_private_api": "Activa l'obtenció amb token d'API (API privada)"
         }
       }
     }

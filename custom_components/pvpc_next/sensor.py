@@ -35,8 +35,9 @@ from homeassistant.util import dt as dt_util
 from .aiopvpc.const import KEY_INJECTION, KEY_MAG, KEY_OMIE, KEY_PVPC
 from .aiopvpc.utils import ensure_utc_time
 from .const import (
-    ATTR_ENABLE_INJECTION_PRICE,
-    DEFAULT_ENABLE_INJECTION_PRICE,
+    ATTR_ENABLE_PRIVATE_API,
+    DEFAULT_ENABLE_PRIVATE_API,
+    LEGACY_ATTR_ENABLE_INJECTION_PRICE,
     DOMAIN,
     normalize_better_price_target,
 )
@@ -481,10 +482,12 @@ async def async_setup_entry(
     coordinator = entry.runtime_data
     config = {**entry.data, **entry.options}
     api_token = config.get(CONF_API_TOKEN)
-    enable_injection_price = config.get(ATTR_ENABLE_INJECTION_PRICE)
-    if enable_injection_price is None:
-        enable_injection_price = (
-            bool(api_token) if api_token else DEFAULT_ENABLE_INJECTION_PRICE
+    enable_private_api = config.get(ATTR_ENABLE_PRIVATE_API)
+    if enable_private_api is None:
+        enable_private_api = config.get(LEGACY_ATTR_ENABLE_INJECTION_PRICE)
+    if enable_private_api is None:
+        enable_private_api = (
+            bool(api_token) if api_token else DEFAULT_ENABLE_PRIVATE_API
         )
     sensors = [ElecPriceSensor(coordinator, SENSOR_TYPES[0], entry.unique_id)]
     unique_id = entry.unique_id or entry.entry_id
@@ -494,7 +497,7 @@ async def async_setup_entry(
     )
     if coordinator.api.using_private_api:
         extra_sensors = []
-        if enable_injection_price:
+        if enable_private_api:
             extra_sensors.extend(SENSOR_TYPES[1:])
         sensors.extend(
             ElecPriceSensor(coordinator, sensor_desc, entry.unique_id)

@@ -25,7 +25,7 @@ _ha_uniqueid_to_sensor_key = {
 def get_enabled_sensor_keys(
     using_private_api: bool,
     entries: list[RegistryEntry],
-    enable_injection_price: bool,
+    enable_private_api: bool,
 ) -> set[str]:
     """Get enabled API indicators."""
     if not using_private_api:
@@ -40,16 +40,16 @@ def get_enabled_sensor_keys(
             sensor_key = _ha_uniqueid_to_sensor_key.get(sensor.unique_id)
             if sensor_key == KEY_INJECTION:
                 seen_injection = True
-                if not enable_injection_price:
+                if not enable_private_api:
                     continue
             if sensor_key is not None:
                 sensor_keys.add(sensor_key)
-        if enable_injection_price and not seen_injection:
+        if enable_private_api and not seen_injection:
             sensor_keys.add(KEY_INJECTION)
         return sensor_keys
     # default sensors when enabling token access
     sensor_keys = {KEY_PVPC}
-    if enable_injection_price:
+    if enable_private_api:
         sensor_keys.add(KEY_INJECTION)
     return sensor_keys
 

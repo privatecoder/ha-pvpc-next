@@ -38,7 +38,11 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
     config_entry: PVPCConfigEntry
 
     def __init__(
-        self, hass: HomeAssistant, entry: PVPCConfigEntry, sensor_keys: set[str]
+        self,
+        hass: HomeAssistant,
+        entry: PVPCConfigEntry,
+        sensor_keys: set[str],
+        use_private_api: bool,
     ) -> None:
         """Initialize."""
         config = {**entry.data, **entry.options}
@@ -52,6 +56,7 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
             power_p1 = DEFAULT_POWER_KW
         if power_p2_p3 is None:
             power_p2_p3 = DEFAULT_POWER_KW
+        api_token = config.get(CONF_API_TOKEN) if use_private_api else None
 
         self.api = PVPCData(
             session=async_get_clientsession(hass),
@@ -59,7 +64,7 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
             local_timezone=hass.config.time_zone,
             power=power_p1,
             power_valley=power_p2_p3,
-            api_token=config.get(CONF_API_TOKEN),
+            api_token=api_token,
             sensor_keys=tuple(sensor_keys),
         )
         self._better_price_target = better_price_target

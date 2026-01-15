@@ -22,14 +22,14 @@
         }
       },
       "user": {
-        "description": "Enable Injection Price only if you need it. You will be asked for an API token. PVPC works without it.",
+        "description": "PVPC works without a token (public API). If you have a token, enable the checkbox below (private API), which also allows fetching injection price, day-ahead wholesale price (OMIE), and the regulated gas adjustment (MAG tax).",
         "data": {
           "name": "Sensor Name",
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "tariff": "Applicable tariff by geographic zone",
           "better_price_target": "Better Price Target",
-          "enable_injection_price": "Enable Injection Price"
+          "enable_private_api": "Enable API token fetching (private API)"
         }
       }
     }
@@ -44,12 +44,12 @@
         "title": "ESIOS API token"
       },
       "init": {
-        "description": "Enable Injection Price only if you need it. You will be asked for an API token.",
+        "description": "PVPC works without a token (public API). If you have a token, enable the checkbox below (private API), which also allows fetching injection price, day-ahead wholesale price (OMIE), and the regulated gas adjustment (MAG tax).",
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
           "better_price_target": "Better Price Target",
-          "enable_injection_price": "Enable Injection Price"
+          "enable_private_api": "Enable API token fetching (private API)"
         }
       }
     }
