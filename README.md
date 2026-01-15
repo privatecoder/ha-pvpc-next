@@ -8,6 +8,7 @@ PVPC Next is a custom Home Assistant integration that retrieves the Spanish PVPC
 
 - New PVPC sensors that expose key attributes as standalone entities (e.g., current period, next period, min/max price, price level, and time to better price).
 - Calculated sensors for price levels (current, next and next better price).
+- Configurable Better Price Target to pick the next neutral/cheap/very cheap window.
 - National holidays handled via the `holidays` library (no more hardcoded yearly tables).
 - General bugfixes, hardening, and stability improvements.
 - Code quality pass with pylint score **10/10**.
@@ -20,6 +21,7 @@ PVPC Next is a custom Home Assistant integration that retrieves the Spanish PVPC
 - Sensors for current price and detailed price attributes.
 - Current Price Level, Better Price Level, and Next Price Level sensors.
 - Better Price, Better Price In, and Next Price sensors.
+- Configurable Better Price Target for those Better Price sensors.
 - Works with automations and energy dashboards.
 - Lightweight, async, and HA friendly.
 
@@ -31,6 +33,7 @@ PVPC Next is a custom Home Assistant integration that retrieves the Spanish PVPC
 - Better Price Target options: neutral, cheap, very cheap. Better Price, Better Price In, and Better Price Level point to the next hour that meets the target or better.
 - Change Better Price Target via **Settings -> Devices & Integrations -> PVPC Next -> Configure**.
 - If no target is found, Better Price sensors show Unknown; if price data is missing, they show Unavailable.
+- The old "PVPC" sensor is now "Current Price" and keeps the remaining attributes that are not exposed as separate sensors.
 
 ---
 
