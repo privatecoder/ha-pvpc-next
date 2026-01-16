@@ -322,6 +322,7 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:flash",
+        update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_next_period",
