@@ -21,7 +21,6 @@ from homeassistant.const import (
     STATE_UNKNOWN,
     UnitOfEnergy,
     UnitOfPower,
-    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
@@ -38,7 +37,9 @@ from .aiopvpc.const import (
     KEY_OMIE,
     KEY_PVPC,
     SENSOR_KEY_TO_DATAID,
+    TARIFFS,
 )
+from .aiopvpc.pvpc_tariff import get_current_and_next_tariff_periods
 from .aiopvpc.utils import ensure_utc_time
 from .const import (
     ATTR_ENABLE_PRIVATE_API,
@@ -88,6 +89,25 @@ def _format_time_to_better_price(
     next_ts, _price, _ratio = next_target
     now_utc = ensure_utc_time(dt_util.utcnow())
     delta_seconds = int((next_ts - now_utc).total_seconds())
+    hours, remainder = divmod(max(delta_seconds, 0), 3600)
+    minutes = remainder // 60
+    return f"{hours:02d}:{minutes:02d}"
+
+
+def _format_time_to_next_period(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> str | None:
+    current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
+    if not current_prices:
+        return STATE_UNAVAILABLE
+    local_tz = _local_timezone(coordinator)
+    now_local = ensure_utc_time(dt_util.utcnow()).astimezone(local_tz)
+    hour_start = now_local.replace(minute=0, second=0, microsecond=0)
+    _current_period, _next_period, delta = get_current_and_next_tariff_periods(
+        hour_start, zone_ceuta_melilla=coordinator.api.tariff != TARIFFS[0]
+    )
+    next_period_start = hour_start + delta
+    delta_seconds = int((next_period_start - now_local).total_seconds())
     hours, remainder = divmod(max(delta_seconds, 0), 3600)
     minutes = remainder // 60
     return f"{hours:02d}:{minutes:02d}"
@@ -333,12 +353,10 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_hours_to_next_period",
-        name="Hours To Next Period",
-        attribute_key="hours_to_next_period",
-        native_unit_of_measurement=UnitOfTime.HOURS,
-        device_class=SensorDeviceClass.DURATION,
+        name="Next Perion In",
+        value_fn=_format_time_to_next_period,
         icon="mdi:timer-sand",
-        update_on_hour=True,
+        update_every_minute=True,
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_min_price",
@@ -683,6 +701,11 @@ class PVPCAttributeSensor(CoordinatorEntity[ElecPricesDataUpdateCoordinator], Se
                     self.hass, self._update_on_time_change, minute=[0], second=[0]
                 )
             )
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Refresh immediately when coordinator data updates."""
+        self.async_write_ha_state()
 
     @callback
     def _update_on_time_change(self, now: datetime) -> None:
