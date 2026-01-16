@@ -1,7 +1,7 @@
 {
   "domain": "pvpc_next",
   "name": "Spain Hourly Electricity Tariff (PVPC Next)",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "documentation": "https://github.com/privatecoder/ha-pvpc-next",
   "issue_tracker": "https://github.com/privatecoder/ha-pvpc-next/issues",
   "dependencies": [],
