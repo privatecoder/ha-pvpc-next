@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from functools import lru_cache
 
-import holidays
+from holidays.countries.spain import Spain
 
 _HOURS_P2 = (8, 9, 14, 15, 16, 17, 22, 23)
 _HOURS_P2_CYM = (8, 9, 10, 15, 16, 17, 18, 23)
@@ -12,7 +12,7 @@ _HOURS_P2_CYM = (8, 9, 10, 15, 16, 17, 18, 23)
 
 @lru_cache(maxsize=32)
 def _national_p3_holidays(year: int) -> set[date]:
-    national = holidays.country_holidays("ES", years=year, observed=False)
+    national = Spain(years=year, observed=False)
     return set(national.keys())
 
 
