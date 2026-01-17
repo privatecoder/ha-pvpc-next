@@ -269,6 +269,57 @@ def _api_source_label(coordinator: ElecPricesDataUpdateCoordinator) -> str:
     return "private" if coordinator.api.using_private_api else "public"
 
 
+# ----------------- NUEVAS FUNCIONES AÑADIDAS -----------------
+
+def _daily_average_price(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> StateType:
+    current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
+    if not current_prices:
+        return STATE_UNAVAILABLE
+
+    local_tz = _local_timezone(coordinator)
+    today = ensure_utc_time(dt_util.utcnow()).astimezone(local_tz).date()
+
+    prices_today = [
+        price
+        for ts, price in current_prices.items()
+        if ts.astimezone(local_tz).date() == today
+    ]
+
+    if not prices_today:
+        return STATE_UNKNOWN
+
+    return round(sum(prices_today) / len(prices_today), 5)
+
+
+def _tomorrow_daily_average_price(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> StateType:
+    current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
+    if not current_prices:
+        return STATE_UNAVAILABLE
+
+    local_tz = _local_timezone(coordinator)
+    tomorrow = (
+        ensure_utc_time(dt_util.utcnow())
+        .astimezone(local_tz)
+        .date()
+        + timedelta(days=1)
+    )
+
+    prices_tomorrow = [
+        price
+        for ts, price in current_prices.items()
+        if ts.astimezone(local_tz).date() == tomorrow
+    ]
+
+    if not prices_tomorrow:
+        return STATE_UNKNOWN
+
+    return round(sum(prices_tomorrow) / len(prices_tomorrow), 5)
+
+
 SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
         key=KEY_PVPC,
@@ -376,6 +427,29 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         suggested_display_precision=5,
         icon="mdi:arrow-up-bold",
     ),
+
+    # --------- NUEVOS SENSORES (MEDIA) -------------
+    PVPCAttributeSensorDescription(
+        key="pvpc_daily_average_price",
+        name="Daily Average Price",
+        value_fn=_daily_average_price,
+        native_unit_of_measurement=_PRICE_UNIT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=5,
+        icon="mdi:chart-line",
+        update_on_hour=True,
+    ),
+    PVPCAttributeSensorDescription(
+        key="pvpc_tomorrow_daily_average_price",
+        name="Tomorrow Average Price",
+        value_fn=_tomorrow_daily_average_price,
+        native_unit_of_measurement=_PRICE_UNIT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=5,
+        icon="mdi:chart-line-variant",
+        update_on_hour=True,
+    ),
+
     PVPCAttributeSensorDescription(
         key="pvpc_next_better_price",
         name="Better Price",
