@@ -487,10 +487,15 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
             )
             attributes["tariff"] = self.tariff
             attributes["period"] = current_period
-            power_period, _next_power_period, _power_delta = (
+            power_period, next_power_period, power_delta = (
                 get_current_and_next_power_periods(
                     local_time, zone_ceuta_melilla=self.tariff != TARIFFS[0]
                 )
+            )
+            attributes["power_period"] = power_period
+            attributes["next_power_period"] = next_power_period
+            attributes["hours_to_next_power_period"] = (
+                int(power_delta.total_seconds()) // 3600
             )
             power = self._power if power_period == "P1" else self._power_valley
             attributes["available_power"] = int(1000 * power)

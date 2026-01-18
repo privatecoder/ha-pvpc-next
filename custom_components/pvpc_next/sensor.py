@@ -38,7 +38,10 @@ from .aiopvpc.const import (
     SENSOR_KEY_TO_DATAID,
     TARIFFS,
 )
-from .aiopvpc.pvpc_tariff import get_current_and_next_price_periods
+from .aiopvpc.pvpc_tariff import (
+    get_current_and_next_power_periods,
+    get_current_and_next_price_periods,
+)
 from .aiopvpc.utils import ensure_utc_time
 from .const import (
     ATTR_ENABLE_PRIVATE_API,
@@ -121,6 +124,25 @@ def _format_time_to_next_period(
     now_local = ensure_utc_time(dt_util.utcnow()).astimezone(local_tz)
     hour_start = now_local.replace(minute=0, second=0, microsecond=0)
     _current_period, _next_period, delta = get_current_and_next_price_periods(
+        hour_start, zone_ceuta_melilla=coordinator.api.tariff != TARIFFS[0]
+    )
+    next_period_start = hour_start + delta
+    delta_seconds = int((next_period_start - now_local).total_seconds())
+    hours, remainder = divmod(max(delta_seconds, 0), 3600)
+    minutes = remainder // 60
+    return f"{hours:02d}:{minutes:02d}"
+
+
+def _format_time_to_next_power_period(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> str | None:
+    current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
+    if not current_prices:
+        return STATE_UNAVAILABLE
+    local_tz = _local_timezone(coordinator)
+    now_local = ensure_utc_time(dt_util.utcnow()).astimezone(local_tz)
+    hour_start = now_local.replace(minute=0, second=0, microsecond=0)
+    _current_period, _next_period, delta = get_current_and_next_power_periods(
         hour_start, zone_ceuta_melilla=coordinator.api.tariff != TARIFFS[0]
     )
     next_period_start = hour_start + delta
@@ -447,6 +469,27 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         attribute_key="period",
         icon="mdi:clock-outline",
         update_on_hour=True,
+    ),
+    PVPCAttributeSensorDescription(
+        key="pvpc_current_power_period",
+        name="Current Power Period",
+        attribute_key="power_period",
+        icon="mdi:flash",
+        update_on_hour=True,
+    ),
+    PVPCAttributeSensorDescription(
+        key="pvpc_next_power_period",
+        name="Next Power Period",
+        attribute_key="next_power_period",
+        icon="mdi:flash",
+        update_on_hour=True,
+    ),
+    PVPCAttributeSensorDescription(
+        key="pvpc_next_power_period_in",
+        name="Next Power Period In",
+        value_fn=_format_time_to_next_power_period,
+        icon="mdi:timer-sand",
+        update_every_minute=True,
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_available_power",

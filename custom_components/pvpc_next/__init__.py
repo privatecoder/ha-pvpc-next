@@ -137,6 +137,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bo
             "pvpc_next_better_price": "pvpc_next_best_price",
             "pvpc_time_to_better_price": "pvpc_time_to_next_best",
             "pvpc_better_price_level": "pvpc_next_best_price_level",
+            "pvpc_power_period": "pvpc_current_power_period",
         }
         for entity in entity_entries:
             new_unique_id = entity.unique_id
