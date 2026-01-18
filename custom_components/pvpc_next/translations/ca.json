@@ -66,5 +66,14 @@
         }
       }
     }
+  },
+  "selector": {
+    "better_price_target": {
+      "options": {
+        "neutral": "Neutral",
+        "cheap": "Barat",
+        "very cheap": "Molt barat"
+      }
+    }
   }
 }

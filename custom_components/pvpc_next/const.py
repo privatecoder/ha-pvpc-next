@@ -17,7 +17,7 @@ ATTR_TARIFF = "tariff"
 DEFAULT_NAME = "PVPC Next"
 DEFAULT_TARIFF = TARIFFS[0]
 
-DEFAULT_BETTER_PRICE_TARGET = "neutral"
+DEFAULT_BETTER_PRICE_TARGET = "very cheap"
 DEFAULT_ENABLE_PRIVATE_API = False
 BETTER_PRICE_TARGETS = ("neutral", "cheap", "very cheap")
 VALID_POWER = vol.All(vol.Coerce(float), vol.Range(min=1.0, max=15.0))

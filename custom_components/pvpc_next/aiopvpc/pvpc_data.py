@@ -178,8 +178,34 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
         Prices are referenced with datetimes in UTC.
         """
         try:
+            _LOGGER.debug("[%s] Requesting %s", sensor_key, url)
             async with async_timeout.timeout(self._timeout):
-                return await self._api_get_data(sensor_key, url)
+                response = await self._api_get_data(sensor_key, url)
+                if _LOGGER.isEnabledFor(logging.DEBUG) and response is not None:
+                    _LOGGER.debug(
+                        "[%s] Response meta name=%s data_id=%s unit=%s last_update=%s",
+                        sensor_key,
+                        response.name,
+                        response.data_id,
+                        response.unit,
+                        response.last_update,
+                    )
+                    for series_key, series in response.series.items():
+                        _LOGGER.debug(
+                            "[%s] Response series=%s points=%d",
+                            sensor_key,
+                            series_key,
+                            len(series),
+                        )
+                        for ts, price in sorted(series.items()):
+                            _LOGGER.debug(
+                                "[%s] Response point series=%s ts=%s price=%.5f",
+                                sensor_key,
+                                series_key,
+                                ts.isoformat(),
+                                price,
+                            )
+                return response
         except (AttributeError, KeyError) as exc:
             _LOGGER.debug("[%s] Bad try on getting prices (%s)", sensor_key, exc)
         except asyncio.TimeoutError:
@@ -335,7 +361,16 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
         else:
             # make API call to download today prices
             prices_response = await self._download_daily_data(sensor_key, url_now)
-            if prices_response is None or not prices_response.series.get(sensor_key):
+            if prices_response is None:
+                _LOGGER.debug("[%s] No response for %s", sensor_key, url_now)
+                return current_prices
+            if not prices_response.series.get(sensor_key):
+                _LOGGER.debug(
+                    "[%s] Response missing series for %s (keys=%s)",
+                    sensor_key,
+                    url_now,
+                    list(prices_response.series),
+                )
                 return current_prices
             prices = prices_response.series[sensor_key]
             current_prices.update(prices)
@@ -343,16 +378,29 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
         # At evening, it is possible to retrieve next day prices
         if local_ref_now.hour >= 20:
             prices_fut_response = await self._download_daily_data(sensor_key, url_next)
-            if prices_fut_response:
+            if prices_fut_response is None:
+                _LOGGER.debug("[%s] No response for %s", sensor_key, url_next)
+            elif not prices_fut_response.series.get(sensor_key):
+                _LOGGER.debug(
+                    "[%s] Next-day response missing series for %s (keys=%s)",
+                    sensor_key,
+                    url_next,
+                    list(prices_fut_response.series),
+                )
+            else:
                 prices_fut = prices_fut_response.series[sensor_key]
                 current_prices.update(prices_fut)
 
-        _LOGGER.debug(
-            "[%s] Download done, now with %d prices from %s UTC",
-            sensor_key,
-            len(current_prices),
-            next(iter(current_prices)).strftime("%Y-%m-%d %Hh"),
-        )
+        if _LOGGER.isEnabledFor(logging.DEBUG) and current_prices:
+            min_ts = min(current_prices)
+            max_ts = max(current_prices)
+            _LOGGER.debug(
+                "[%s] Download done, %d prices %s..%s UTC",
+                sensor_key,
+                len(current_prices),
+                min_ts.strftime("%Y-%m-%d %Hh"),
+                max_ts.strftime("%Y-%m-%d %Hh"),
+            )
 
         return current_prices
 
@@ -399,6 +447,23 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
         except KeyError:
             self.states[sensor_key] = None
             current_data.availability[sensor_key] = False
+            if current_prices:
+                first_ts = min(current_prices)
+                last_ts = max(current_prices)
+                _LOGGER.debug(
+                    "[%s] Missing price for %s; available range %s..%s (%d prices)",
+                    sensor_key,
+                    utc_time,
+                    first_ts,
+                    last_ts,
+                    len(current_prices),
+                )
+            else:
+                _LOGGER.debug(
+                    "[%s] No prices available to compute state at %s",
+                    sensor_key,
+                    utc_time,
+                )
             self.sensor_attributes[sensor_key] = attributes
             return False
 

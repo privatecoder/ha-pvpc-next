@@ -18,7 +18,6 @@ from homeassistant.const import (
     CURRENCY_EURO,
     CONF_API_TOKEN,
     STATE_UNAVAILABLE,
-    STATE_UNKNOWN,
     UnitOfEnergy,
     UnitOfPower,
 )
@@ -65,6 +64,7 @@ _PRICE_LEVEL_TARGET_MAX = {
     "cheap": 0.4,
     "neutral": 0.6,
 }
+_DEBUG_LAST_UPDATE: dict[str, datetime] = {}
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -82,11 +82,28 @@ def _format_time_to_better_price(
 ) -> str | None:
     current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
     if not current_prices:
-        return STATE_UNAVAILABLE
+        return None
     next_target = _next_target_price(coordinator)
     if not next_target:
-        return STATE_UNKNOWN
+        return None
     next_ts, _price, _ratio = next_target
+    now_utc = ensure_utc_time(dt_util.utcnow())
+    delta_seconds = int((next_ts - now_utc).total_seconds())
+    hours, remainder = divmod(max(delta_seconds, 0), 3600)
+    minutes = remainder // 60
+    return f"{hours:02d}:{minutes:02d}"
+
+
+def _format_time_to_next_price(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> str | None:
+    current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
+    if not current_prices:
+        return None
+    next_price = _next_price_candidate(coordinator)
+    if not next_price:
+        return None
+    next_ts, _price = next_price
     now_utc = ensure_utc_time(dt_util.utcnow())
     delta_seconds = int((next_ts - now_utc).total_seconds())
     hours, remainder = divmod(max(delta_seconds, 0), 3600)
@@ -191,24 +208,103 @@ def _next_target_price(
 ) -> tuple[datetime, float, float] | None:
     current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
     if not current_prices:
+        _log_debug_once_per_update(
+            coordinator,
+            "no_pvpc_prices",
+            "No PVPC prices available; better-price sensors unavailable (entry_id=%s)",
+            coordinator.entry_id,
+        )
         return None
     now_utc = ensure_utc_time(dt_util.utcnow())
     target = normalize_better_price_target(coordinator.better_price_target)
     max_ratio = _PRICE_LEVEL_TARGET_MAX.get(target)
     if max_ratio is None:
-        return None
+        _log_debug_once_per_update(
+            coordinator,
+            "bad_target",
+            "Unknown better price target '%s' (entry_id=%s)",
+            target,
+            coordinator.entry_id,
+        )
     local_tz = _local_timezone(coordinator)
-    candidates = [
-        (ts, price, ratio)
-        for ts, price in current_prices.items()
-        if ts > now_utc
-        and (ratio := _price_ratio_for_timestamp(current_prices, ts, price, local_tz))
-        is not None
-        and ratio <= max_ratio
-    ]
+    candidates: list[tuple[datetime, float, float]] = []
+    if max_ratio is not None:
+        candidates = [
+            (ts, price, ratio)
+            for ts, price in current_prices.items()
+            if ts > now_utc
+            and (
+                ratio := _price_ratio_for_timestamp(
+                    current_prices, ts, price, local_tz
+                )
+            )
+            is not None
+            and ratio <= max_ratio
+        ]
     if not candidates:
-        return None
-    return min(candidates, key=lambda item: item[0])
+        fallback_candidates = [
+            (ts, price, ratio)
+            for ts, price in current_prices.items()
+            if ts > now_utc
+            and (ratio := _price_ratio_for_timestamp(current_prices, ts, price, local_tz))
+            is not None
+        ]
+        if not fallback_candidates:
+            future_prices = sum(1 for ts in current_prices if ts > now_utc)
+            _log_debug_once_per_update(
+                coordinator,
+                "no_better_candidates",
+                (
+                    "No better-price candidates (target=%s max_ratio=%s "
+                    "future_prices=%d total_prices=%d entry_id=%s)"
+                ),
+                target,
+                f"{max_ratio:.2f}" if max_ratio is not None else "n/a",
+                future_prices,
+                len(current_prices),
+                coordinator.entry_id,
+            )
+            return None
+        fallback = min(fallback_candidates, key=lambda item: (item[1], item[0]))
+        _log_debug_once_per_update(
+            coordinator,
+            "fallback_best_price",
+            (
+                "Fallback to best available price (target=%s max_ratio=%s "
+                "ts=%s price=%.5f ratio=%.2f entry_id=%s)"
+            ),
+            target,
+            f"{max_ratio:.2f}" if max_ratio is not None else "n/a",
+            fallback[0].isoformat(),
+            fallback[1],
+            fallback[2],
+            coordinator.entry_id,
+        )
+        return fallback
+    next_target = min(candidates, key=lambda item: item[0])
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        soonest = sorted(candidates, key=lambda item: item[0])[:3]
+        sample = ", ".join(
+            f"{ts.isoformat()}@{price:.5f}/{ratio:.2f}"
+            for ts, price, ratio in soonest
+        )
+        _log_debug_once_per_update(
+            coordinator,
+            "better_target",
+            (
+                "Better-price target=%s max_ratio=%.2f next=%s price=%.5f ratio=%.2f "
+                "candidates=%d sample=[%s] entry_id=%s"
+            ),
+            target,
+            max_ratio,
+            next_target[0].isoformat(),
+            next_target[1],
+            next_target[2],
+            len(candidates),
+            sample,
+            coordinator.entry_id,
+        )
+    return next_target
 
 
 def _better_price_value(
@@ -216,10 +312,10 @@ def _better_price_value(
 ) -> StateType:
     current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
     if not current_prices:
-        return STATE_UNAVAILABLE
+        return None
     next_target = _next_target_price(coordinator)
     if not next_target:
-        return STATE_UNKNOWN
+        return None
     _ts, price, _ratio = next_target
     return price
 
@@ -246,10 +342,10 @@ def _better_price_level(
 ) -> str | None:
     current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
     if not current_prices:
-        return STATE_UNAVAILABLE
+        return None
     next_target = _next_target_price(coordinator)
     if not next_target:
-        return STATE_UNKNOWN
+        return None
     _ts, _price, ratio = next_target
     return _price_level_from_ratio(ratio)
 
@@ -267,6 +363,24 @@ def _data_id_value(sensor_key: str) -> StateType:
 
 def _api_source_label(coordinator: ElecPricesDataUpdateCoordinator) -> str:
     return "private" if coordinator.api.using_private_api else "public"
+
+
+def _log_debug_once_per_update(
+    coordinator: ElecPricesDataUpdateCoordinator,
+    key: str,
+    message: str,
+    *args,
+) -> None:
+    if not _LOGGER.isEnabledFor(logging.DEBUG):
+        return
+    last_update = getattr(coordinator.data, "last_update", None)
+    if last_update is None:
+        last_update = dt_util.utcnow()
+    full_key = f"{key}:{coordinator.entry_id}"
+    if _DEBUG_LAST_UPDATE.get(full_key) == last_update:
+        return
+    _DEBUG_LAST_UPDATE[full_key] = last_update
+    _LOGGER.debug(message, *args)
 
 
 SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
@@ -352,8 +466,8 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
-        key="pvpc_hours_to_next_period",
-        name="Next Perion In",
+        key="pvpc_next_period_in",
+        name="Next Period In",
         value_fn=_format_time_to_next_period,
         icon="mdi:timer-sand",
         update_every_minute=True,
@@ -377,8 +491,8 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         icon="mdi:arrow-up-bold",
     ),
     PVPCAttributeSensorDescription(
-        key="pvpc_next_better_price",
-        name="Better Price",
+        key="pvpc_next_best_price",
+        name="Next Best Price",
         value_fn=_better_price_value,
         native_unit_of_measurement=_PRICE_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
@@ -397,6 +511,13 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
+        key="pvpc_next_price_in",
+        name="Next Price In",
+        value_fn=_format_time_to_next_price,
+        update_every_minute=True,
+        icon="mdi:clock-outline",
+    ),
+    PVPCAttributeSensorDescription(
         key="pvpc_next_price_level",
         name="Next Price Level",
         value_fn=_next_price_level,
@@ -407,8 +528,8 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
-        key="pvpc_time_to_better_price",
-        name="Better Price In",
+        key="pvpc_time_to_next_best",
+        name="Next Best In",
         value_fn=_format_time_to_better_price,
         update_every_minute=True,
         icon="mdi:clock-outline",
@@ -431,8 +552,8 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
-        key="pvpc_better_price_level",
-        name="Better Price Level",
+        key="pvpc_next_best_price_level",
+        name="Next Best Level",
         value_fn=_better_price_level,
         device_class=SensorDeviceClass.ENUM,
         translation_key="price_level",
@@ -722,4 +843,6 @@ class PVPCAttributeSensor(CoordinatorEntity[ElecPricesDataUpdateCoordinator], Se
         if self.entity_description.value_fn is not None:
             return self.entity_description.value_fn(self.coordinator)
         attributes = self.coordinator.api.sensor_attributes.get(KEY_PVPC, {})
+        if self.entity_description.key == "pvpc_num_better_prices_ahead":
+            return attributes.get(self.entity_description.attribute_key, 0)
         return attributes.get(self.entity_description.attribute_key)

@@ -16,10 +16,16 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_API_TOKEN, CONF_NAME
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 from homeassistant.util import dt as dt_util
 
 from .aiopvpc import PVPCData, DEFAULT_POWER_KW
 from .const import (
+    BETTER_PRICE_TARGETS,
     DOMAIN,
     DEFAULT_NAME,
     DEFAULT_TARIFF,
@@ -33,7 +39,6 @@ from .const import (
     LEGACY_ATTR_POWER_P3,
     DEFAULT_BETTER_PRICE_TARGET,
     DEFAULT_ENABLE_PRIVATE_API,
-    VALID_BETTER_PRICE_TARGET,
     VALID_POWER,
     VALID_TARIFF,
 )
@@ -88,7 +93,13 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                 vol.Required(ATTR_POWER_P2_P3, default=power_p2_p3): VALID_POWER,
                 vol.Required(
                     ATTR_BETTER_PRICE_TARGET, default=better_price_target
-                ): VALID_BETTER_PRICE_TARGET,
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(BETTER_PRICE_TARGETS),
+                        translation_key="better_price_target",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Required(ATTR_ENABLE_PRIVATE_API, default=enable_private_api): bool,
             }
         )
@@ -156,7 +167,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
 class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle config flow for PVPC Next."""
 
-    VERSION = 4
+    VERSION = 5
     _name: str | None = None
     _tariff: str | None = None
     _power_p1: float | None = None
@@ -208,7 +219,13 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(ATTR_POWER_P2_P3, default=DEFAULT_POWER_KW): VALID_POWER,
                 vol.Required(
                     ATTR_BETTER_PRICE_TARGET, default=DEFAULT_BETTER_PRICE_TARGET
-                ): VALID_BETTER_PRICE_TARGET,
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(BETTER_PRICE_TARGETS),
+                        translation_key="better_price_target",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Required(
                     ATTR_ENABLE_PRIVATE_API,
                     default=DEFAULT_ENABLE_PRIVATE_API,

@@ -9,8 +9,8 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 ## What's new vs the integrated version
 
 - New PVPC sensors that expose key attributes as standalone entities (e.g., tariff, current/next period, hours to next period, min/max price, price levels, better prices ahead, and time to better price).
-- Calculated sensors for price levels (current, next and next better price).
-- Configurable Better Price Target to pick the next neutral/cheap/very cheap window.
+- Calculated sensors for price levels (current, next and next best price).
+- Configurable Better Price Target (default: very cheap) to pick the next neutral/cheap/very cheap window; if none match, it falls back to the lowest available future price.
 - National holidays handled via the `holidays` library (no more hardcoded yearly tables).
 - General bugfixes, hardening, and stability improvements.
 
@@ -20,9 +20,9 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 
 - Hourly PVPC prices for Spain.
 - Sensors for current price and detailed price attributes.
-- Current Price Level, Better Price Level, and Next Price Level sensors.
-- Better Price, Better Price In, and Next Price sensors.
-- Configurable Better Price Target for those Better Price sensors.
+- Current Price Level, Next Best Level, and Next Price Level sensors.
+- Next Best Price, Next Best In, Next Price, and Next Price In sensors.
+- Configurable Better Price Target for the Next Best sensors (default: very cheap, with a fallback to the lowest available future price if no target match).
 - Tariff selection by geographic zone and contracted power (P1 and P2/P3).
 - Diagnostic sensors for API source and data IDs (PVPC, and optional private API data IDs).
 - Works with automations and energy dashboards.
@@ -33,7 +33,7 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 ## Sensors
 
 - Price sensors: Current Price; private API adds Injection Price, MAG tax, and OMIE Price (MAG tax and OMIE Price are disabled by default).
-- Attribute sensors: Tariff, Current Period, Next Period, Next Perion In, Available Power, Min Price, Max Price, Better Price, Next Price, Better Price In, Better Prices Ahead, Current Price Level, Next Price Level, Better Price Level.
+- Attribute sensors: Tariff, Current Period, Next Period, Next Period In, Available Power, Min Price, Max Price, Next Best Price, Next Price, Next Price In, Next Best In, Better Prices Ahead, Current Price Level, Next Price Level, Next Best Level.
 - Diagnostic sensors: PVPC Data ID, API Source; private API adds Injection Price Data ID, MAG Tax Data ID, and OMIE Price Data ID (MAG/OMIE data IDs are disabled by default).
 
 ---
@@ -41,11 +41,11 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 ## Configuration & behavior
 
 - Price levels are relative to each day's price range (very cheap to very expensive).
-- Better Price Target options: neutral, cheap, very cheap. Better Price, Better Price In, and Better Price Level point to the next hour that meets the target or better.
+- Better Price Target options: neutral, cheap, very cheap (default: very cheap). Next Best Price, Next Best In, and Next Best Level point to the next hour that meets the target or better, and fall back to the lowest available future price if none match.
 - Tariff selection controls the geographic zone (Península/Baleares/Canarias vs Ceuta/Melilla).
 - Contracted power (P1 and P2/P3) is used to compute the Available Power sensor (in W).
 - Change Better Price Target via **Settings -> Devices & Integrations -> PVPC Next -> Configure**.
-- If no target is found, Better Price sensors show Unknown; if price data is missing, they show Unavailable.
+- If no target is found, Next Best sensors show Unknown; if price data is missing, they show Unavailable.
 - The old "PVPC" sensor is now "Current Price" and keeps the remaining attributes that are not exposed as separate sensors.
 - Private API usage is optional and disabled by default; it requires an ESIOS API token and can be enabled in **Configure** (enables Injection Price, MAG tax and OMIE Price sensors).
 
