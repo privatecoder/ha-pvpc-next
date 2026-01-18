@@ -23,7 +23,7 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Current Price Level, Next Best Level, and Next Price Level sensors.
 - Next Best Price, Next Best In, Next Price, and Next Price In sensors.
 - Configurable Better Price Target for the Next Best sensors (default: very cheap, with a fallback to the lowest available future price if no target match).
-- Tariff selection by geographic zone and contracted power (P1 and P2/P3).
+- Tariff selection by geographic zone and contracted power (P1 and P3).
 - Diagnostic sensors for API source and data IDs (PVPC, and optional private API data IDs).
 - Works with automations and energy dashboards.
 - Lightweight, async, and HA friendly.
@@ -42,8 +42,12 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 
 - Price levels are relative to each day's price range (very cheap to very expensive).
 - Better Price Target options: neutral, cheap, very cheap (default: very cheap). Next Best Price, Next Best In, and Next Best Level point to the next hour that meets the target or better, and fall back to the lowest available future price if none match.
+- Price periods (P1/P2/P3) and power periods (P1/P3) follow different rules; see the Endesa overview [here](https://www.endesa.com/es/blog/blog-de-endesa/horarios-luz-valle-punta-llano) and EnergiaXXI notes [here](https://www.energiaxxi.com/es/facturas/cambios-factura-luz).
+- Price periods for "2.0TD Península / Baleares / Canarias": weekdays P1 10:00-14:00 and 18:00-22:00; P2 08:00-10:00, 14:00-18:00, 22:00-00:00; P3 00:00-08:00; weekends and national holidays are P3 all day.
+- Price periods for "2.0TD Ceuta / Melilla": weekdays P1 11:00-15:00 and 19:00-23:00; P2 08:00-11:00, 15:00-19:00, 23:00-00:00; P3 00:00-08:00; weekends and national holidays are P3 all day.
+- Power periods (both regions): weekdays P1 08:00-00:00 and P3 00:00-08:00; weekends and national holidays are P3 all day (no P2 for power).
 - Tariff selection controls the geographic zone (Península/Baleares/Canarias vs Ceuta/Melilla).
-- Contracted power (P1 and P2/P3) is used to compute the Available Power sensor (in W).
+- Contracted power (P1 and P3) is used to compute the Available Power sensor (in W).
 - Change Better Price Target via **Settings -> Devices & Integrations -> PVPC Next -> Configure**.
 - If no target is found, Next Best sensors show Unknown; if price data is missing, they show Unavailable.
 - The old "PVPC" sensor is now "Current Price" and keeps the remaining attributes that are not exposed as separate sensors.

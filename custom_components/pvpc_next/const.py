@@ -7,11 +7,12 @@ from .aiopvpc.const import TARIFFS
 DOMAIN = "pvpc_next"
 
 ATTR_POWER_P1 = "power_p1"
-ATTR_POWER_P2_P3 = "power_p2_p3"
+ATTR_POWER_P3 = "power_p3"
 ATTR_BETTER_PRICE_TARGET = "better_price_target"
 ATTR_ENABLE_PRIVATE_API = "enable_private_api"
 LEGACY_ATTR_ENABLE_INJECTION_PRICE = "enable_injection_price"
 LEGACY_ATTR_POWER = "power"
+LEGACY_ATTR_POWER_P2_P3 = "power_p2_p3"
 LEGACY_ATTR_POWER_P3 = "power_p3"
 ATTR_TARIFF = "tariff"
 DEFAULT_NAME = "PVPC Next"

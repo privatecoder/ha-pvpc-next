@@ -37,7 +37,10 @@ from .const import (
 )
 from .parser import extract_esios_data, get_daily_urls_to_download
 from .prices import add_composed_price_sensors, make_price_sensor_attributes
-from .pvpc_tariff import get_current_and_next_tariff_periods
+from .pvpc_tariff import (
+    get_current_and_next_power_periods,
+    get_current_and_next_price_periods,
+)
 from .utils import ensure_utc_time
 
 _LOGGER = logging.getLogger(__name__)
@@ -479,16 +482,17 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
                 current_period,
                 next_period,
                 delta,
-            ) = get_current_and_next_tariff_periods(
+            ) = get_current_and_next_price_periods(
                 local_time, zone_ceuta_melilla=self.tariff != TARIFFS[0]
             )
             attributes["tariff"] = self.tariff
             attributes["period"] = current_period
-            power = (
-                self._power_valley
-                if current_period in ("P2", "P3")
-                else self._power
+            power_period, _next_power_period, _power_delta = (
+                get_current_and_next_power_periods(
+                    local_time, zone_ceuta_melilla=self.tariff != TARIFFS[0]
+                )
             )
+            power = self._power if power_period == "P1" else self._power_valley
             attributes["available_power"] = int(1000 * power)
             attributes["next_period"] = next_period
             attributes["hours_to_next_period"] = int(delta.total_seconds()) // 3600

@@ -13,11 +13,12 @@ from .const import (
     ATTR_BETTER_PRICE_TARGET,
     ATTR_ENABLE_PRIVATE_API,
     ATTR_POWER_P1,
-    ATTR_POWER_P2_P3,
+    ATTR_POWER_P3,
     ATTR_TARIFF,
     DEFAULT_ENABLE_PRIVATE_API,
     LEGACY_ATTR_ENABLE_INJECTION_PRICE,
     LEGACY_ATTR_POWER,
+    LEGACY_ATTR_POWER_P2_P3,
     LEGACY_ATTR_POWER_P3,
 )
 
@@ -40,7 +41,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool
         )
     use_private_api = bool(api_token) and enable_private_api
     power_p1 = config.get(ATTR_POWER_P1, config.get(LEGACY_ATTR_POWER))
-    power_p2_p3 = config.get(ATTR_POWER_P2_P3, config.get(LEGACY_ATTR_POWER_P3))
+    power_p3 = config.get(
+        ATTR_POWER_P3,
+        config.get(LEGACY_ATTR_POWER_P2_P3, config.get(LEGACY_ATTR_POWER_P3)),
+    )
     better_price_target = config.get(ATTR_BETTER_PRICE_TARGET)
     sensor_keys = get_enabled_sensor_keys(
         using_private_api=use_private_api,
@@ -49,7 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool
     )
     _LOGGER.debug(
         "PVPC Next config entry_id=%s unique_id=%s name=%s tariff=%s timezone=%s "
-        "power_p1=%s power_p2_p3=%s better_price_target=%s enable_private_api=%s "
+        "power_p1=%s power_p3=%s better_price_target=%s enable_private_api=%s "
         "use_private_api=%s api_token_set=%s sensor_keys=%s entry_version=%s",
         entry.entry_id,
         entry.unique_id,
@@ -57,7 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool
         config.get(ATTR_TARIFF),
         hass.config.time_zone,
         power_p1,
-        power_p2_p3,
+        power_p3,
         better_price_target,
         enable_private_api,
         use_private_api,
@@ -82,7 +86,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> boo
 
 async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool:
     """Migrate old config entries to the current schema."""
-    if entry.version >= 5:
+    if entry.version >= 6:
         return True
 
     data = {**entry.data}
@@ -104,10 +108,13 @@ async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bo
             store.pop(LEGACY_ATTR_POWER, None)
             migrated = True
 
-        if LEGACY_ATTR_POWER_P3 in store:
-            if ATTR_POWER_P2_P3 not in store:
-                store[ATTR_POWER_P2_P3] = store[LEGACY_ATTR_POWER_P3]
-            store.pop(LEGACY_ATTR_POWER_P3, None)
+        if LEGACY_ATTR_POWER_P2_P3 in store:
+            if ATTR_POWER_P3 not in store:
+                store[ATTR_POWER_P3] = store[LEGACY_ATTR_POWER_P2_P3]
+            store.pop(LEGACY_ATTR_POWER_P2_P3, None)
+            migrated = True
+        if LEGACY_ATTR_POWER_P3 in store and ATTR_POWER_P3 not in store:
+            store[ATTR_POWER_P3] = store[LEGACY_ATTR_POWER_P3]
             migrated = True
         if LEGACY_ATTR_ENABLE_INJECTION_PRICE in store:
             if ATTR_ENABLE_PRIVATE_API not in store:
@@ -158,6 +165,6 @@ async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bo
         data=data if migrated else None,
         options=options if migrated else None,
         unique_id=updated_unique_id if updated_unique_id != unique_id else None,
-        version=5,
+        version=6,
     )
     return True

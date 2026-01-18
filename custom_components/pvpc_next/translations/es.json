@@ -26,7 +26,7 @@
         "data": {
           "name": "Nombre del sensor",
           "power_p1": "P1 (punta) (kW)",
-          "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
+          "power_p3": "P3 (llano) (kW)",
           "tariff": "Tarifa aplicable por zona geográfica",
           "better_price_target": "Objetivo de mejor precio",
           "enable_private_api": "Activar obtención con token de API (API privada)"
@@ -47,7 +47,7 @@
         "description": "PVPC funciona sin token (API pública). Si tienes un token, activa la casilla de abajo (API privada), con la que también se pueden obtener el precio de inyección, el precio mayorista day-ahead (OMIE) y el ajuste de gas regulado (MAG tax).",
         "data": {
           "power_p1": "P1 (punta) (kW)",
-          "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
+          "power_p3": "P3 (llano) (kW)",
           "better_price_target": "Objetivo de mejor precio",
           "enable_private_api": "Activar obtención con token de API (API privada)"
         }

@@ -30,12 +30,13 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_TARIFF,
     ATTR_POWER_P1,
-    ATTR_POWER_P2_P3,
+    ATTR_POWER_P3,
     ATTR_BETTER_PRICE_TARGET,
     ATTR_ENABLE_PRIVATE_API,
     ATTR_TARIFF,
     LEGACY_ATTR_ENABLE_INJECTION_PRICE,
     LEGACY_ATTR_POWER,
+    LEGACY_ATTR_POWER_P2_P3,
     LEGACY_ATTR_POWER_P3,
     DEFAULT_BETTER_PRICE_TARGET,
     DEFAULT_ENABLE_PRIVATE_API,
@@ -52,7 +53,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
     """Handle PVPC options flow."""
 
     _power_p1: float | None = None
-    _power_p2_p3: float | None = None
+    _power_p3: float | None = None
     _better_price_target: str | None = None
     _enable_private_api: bool | None = None
 
@@ -69,7 +70,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
             return DEFAULT_POWER_KW if value is None else value
 
         power_p1 = _get_power_value(ATTR_POWER_P1, LEGACY_ATTR_POWER)
-        power_p2_p3 = _get_power_value(ATTR_POWER_P2_P3, LEGACY_ATTR_POWER_P3)
+        power_p3 = _get_power_value(ATTR_POWER_P3, LEGACY_ATTR_POWER_P2_P3)
         better_price_target = options.get(
             ATTR_BETTER_PRICE_TARGET,
             data.get(ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET),
@@ -90,7 +91,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
         schema = vol.Schema(
             {
                 vol.Required(ATTR_POWER_P1, default=power_p1): VALID_POWER,
-                vol.Required(ATTR_POWER_P2_P3, default=power_p2_p3): VALID_POWER,
+                vol.Required(ATTR_POWER_P3, default=power_p3): VALID_POWER,
                 vol.Required(
                     ATTR_BETTER_PRICE_TARGET, default=better_price_target
                 ): SelectSelector(
@@ -106,7 +107,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
 
         if user_input is not None:
             self._power_p1 = user_input[ATTR_POWER_P1]
-            self._power_p2_p3 = user_input[ATTR_POWER_P2_P3]
+            self._power_p3 = user_input[ATTR_POWER_P3]
             self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
             self._enable_private_api = user_input[ATTR_ENABLE_PRIVATE_API]
             if self._enable_private_api:
@@ -116,7 +117,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                         title="",
                         data={
                             ATTR_POWER_P1: self._power_p1,
-                            ATTR_POWER_P2_P3: self._power_p2_p3,
+                            ATTR_POWER_P3: self._power_p3,
                             ATTR_BETTER_PRICE_TARGET: self._better_price_target,
                             ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                             CONF_API_TOKEN: existing_token,
@@ -127,7 +128,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                 title="",
                 data={
                     ATTR_POWER_P1: self._power_p1,
-                    ATTR_POWER_P2_P3: self._power_p2_p3,
+                    ATTR_POWER_P3: self._power_p3,
                     ATTR_BETTER_PRICE_TARGET: self._better_price_target,
                     ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: None,
@@ -144,7 +145,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                 title="",
                 data={
                     ATTR_POWER_P1: self._power_p1,
-                    ATTR_POWER_P2_P3: self._power_p2_p3,
+                    ATTR_POWER_P3: self._power_p3,
                     ATTR_BETTER_PRICE_TARGET: self._better_price_target,
                     ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: api_token,
@@ -167,11 +168,11 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
 class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle config flow for PVPC Next."""
 
-    VERSION = 5
+    VERSION = 6
     _name: str | None = None
     _tariff: str | None = None
     _power_p1: float | None = None
-    _power_p2_p3: float | None = None
+    _power_p3: float | None = None
     _better_price_target: str | None = None
     _enable_private_api: bool | None = None
     _api_token: str | None = None
@@ -192,7 +193,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             self._name = user_input[CONF_NAME]
             self._tariff = user_input[ATTR_TARIFF]
             self._power_p1 = user_input[ATTR_POWER_P1]
-            self._power_p2_p3 = user_input[ATTR_POWER_P2_P3]
+            self._power_p3 = user_input[ATTR_POWER_P3]
             self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
             self._enable_private_api = user_input[ATTR_ENABLE_PRIVATE_API]
 
@@ -204,7 +205,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_NAME: self._name,
                     ATTR_TARIFF: self._tariff,
                     ATTR_POWER_P1: self._power_p1,
-                    ATTR_POWER_P2_P3: self._power_p2_p3,
+                    ATTR_POWER_P3: self._power_p3,
                     ATTR_BETTER_PRICE_TARGET: self._better_price_target,
                     ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: None,
@@ -216,7 +217,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
                 vol.Required(ATTR_TARIFF, default=DEFAULT_TARIFF): VALID_TARIFF,
                 vol.Required(ATTR_POWER_P1, default=DEFAULT_POWER_KW): VALID_POWER,
-                vol.Required(ATTR_POWER_P2_P3, default=DEFAULT_POWER_KW): VALID_POWER,
+                vol.Required(ATTR_POWER_P3, default=DEFAULT_POWER_KW): VALID_POWER,
                 vol.Required(
                     ATTR_BETTER_PRICE_TARGET, default=DEFAULT_BETTER_PRICE_TARGET
                 ): SelectSelector(
@@ -265,7 +266,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             CONF_NAME: self._name,
             ATTR_TARIFF: self._tariff,
             ATTR_POWER_P1: self._power_p1,
-            ATTR_POWER_P2_P3: self._power_p2_p3,
+            ATTR_POWER_P3: self._power_p3,
             ATTR_BETTER_PRICE_TARGET: self._better_price_target,
             ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
             CONF_API_TOKEN: self._api_token,
@@ -283,8 +284,11 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
         self._name = entry_data[CONF_NAME]
         self._tariff = entry_data[ATTR_TARIFF]
         self._power_p1 = entry_data.get(ATTR_POWER_P1, entry_data.get(LEGACY_ATTR_POWER))
-        self._power_p2_p3 = entry_data.get(
-            ATTR_POWER_P2_P3, entry_data.get(LEGACY_ATTR_POWER_P3)
+        self._power_p3 = entry_data.get(
+            ATTR_POWER_P3,
+            entry_data.get(
+                LEGACY_ATTR_POWER_P2_P3, entry_data.get(LEGACY_ATTR_POWER_P3)
+            ),
         )
         self._better_price_target = entry_data.get(
             ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET
@@ -298,8 +302,8 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         if self._power_p1 is None:
             self._power_p1 = DEFAULT_POWER_KW
-        if self._power_p2_p3 is None:
-            self._power_p2_p3 = DEFAULT_POWER_KW
+        if self._power_p3 is None:
+            self._power_p3 = DEFAULT_POWER_KW
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None):

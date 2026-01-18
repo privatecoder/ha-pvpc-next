@@ -38,7 +38,7 @@ from .aiopvpc.const import (
     SENSOR_KEY_TO_DATAID,
     TARIFFS,
 )
-from .aiopvpc.pvpc_tariff import get_current_and_next_tariff_periods
+from .aiopvpc.pvpc_tariff import get_current_and_next_price_periods
 from .aiopvpc.utils import ensure_utc_time
 from .const import (
     ATTR_ENABLE_PRIVATE_API,
@@ -120,7 +120,7 @@ def _format_time_to_next_period(
     local_tz = _local_timezone(coordinator)
     now_local = ensure_utc_time(dt_util.utcnow()).astimezone(local_tz)
     hour_start = now_local.replace(minute=0, second=0, microsecond=0)
-    _current_period, _next_period, delta = get_current_and_next_tariff_periods(
+    _current_period, _next_period, delta = get_current_and_next_price_periods(
         hour_start, zone_ceuta_melilla=coordinator.api.tariff != TARIFFS[0]
     )
     next_period_start = hour_start + delta

@@ -15,12 +15,13 @@ from homeassistant.util import dt as dt_util
 from .aiopvpc import BadApiTokenAuthError, DEFAULT_POWER_KW, EsiosApiData, PVPCData
 from .const import (
     ATTR_POWER_P1,
-    ATTR_POWER_P2_P3,
+    ATTR_POWER_P3,
     ATTR_BETTER_PRICE_TARGET,
     ATTR_TARIFF,
     DOMAIN,
     DEFAULT_BETTER_PRICE_TARGET,
     LEGACY_ATTR_POWER,
+    LEGACY_ATTR_POWER_P2_P3,
     LEGACY_ATTR_POWER_P3,
     normalize_better_price_target,
 )
@@ -48,14 +49,17 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
         config = {**entry.data, **entry.options}
 
         power_p1 = config.get(ATTR_POWER_P1, config.get(LEGACY_ATTR_POWER))
-        power_p2_p3 = config.get(ATTR_POWER_P2_P3, config.get(LEGACY_ATTR_POWER_P3))
+        power_p3 = config.get(
+            ATTR_POWER_P3,
+            config.get(LEGACY_ATTR_POWER_P2_P3, config.get(LEGACY_ATTR_POWER_P3)),
+        )
         better_price_target = normalize_better_price_target(
             config.get(ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET)
         )
         if power_p1 is None:
             power_p1 = DEFAULT_POWER_KW
-        if power_p2_p3 is None:
-            power_p2_p3 = DEFAULT_POWER_KW
+        if power_p3 is None:
+            power_p3 = DEFAULT_POWER_KW
         api_token = config.get(CONF_API_TOKEN) if use_private_api else None
 
         self.api = PVPCData(
@@ -63,7 +67,7 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
             tariff=config[ATTR_TARIFF],
             local_timezone=hass.config.time_zone,
             power=power_p1,
-            power_valley=power_p2_p3,
+            power_valley=power_p3,
             api_token=api_token,
             sensor_keys=tuple(sensor_keys),
         )

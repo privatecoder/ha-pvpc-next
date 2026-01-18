@@ -26,7 +26,7 @@
         "data": {
           "name": "Sensorname",
           "power_p1": "P1 (punta) (kW)",
-          "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
+          "power_p3": "P3 (llano) (kW)",
           "tariff": "Geltender Tarif nach geografischer Zone",
           "better_price_target": "Ziel für besseren Preis",
           "enable_private_api": "Abruf über API Token aktivieren (private API)"
@@ -47,7 +47,7 @@
         "description": "PVPC funktioniert auch ohne Token (public API). Falls du einen Token hast, aktiviere die Checkbox unten (private API), womit auch Einspeisepreis, Großhandels-Day-Ahead-Preis (OMIE) und gesetzlicher Gas-Ausgleich (MAG tax) abgerufen werden können.",
         "data": {
           "power_p1": "P1 (punta) (kW)",
-          "power_p2_p3": "P2 (valle) / P3 (llano) (kW)",
+          "power_p3": "P3 (llano) (kW)",
           "better_price_target": "Ziel für besseren Preis",
           "enable_private_api": "Abruf über API Token aktivieren (private API)"
         }
