@@ -667,6 +667,12 @@ async def async_setup_entry(
 ) -> None:
     """Set up the electricity price sensor from config_entry."""
     coordinator = entry.runtime_data
+    if entry.unique_id is None:
+        _LOGGER.debug(
+            "Config entry has no unique_id; falling back to entry_id (entry_id=%s)",
+            entry.entry_id,
+        )
+    entry_unique_id = entry.unique_id or entry.entry_id
     config = {**entry.data, **entry.options}
     api_token = config.get(CONF_API_TOKEN)
     enable_private_api = config.get(ATTR_ENABLE_PRIVATE_API)
@@ -676,8 +682,8 @@ async def async_setup_entry(
         enable_private_api = (
             bool(api_token) if api_token else DEFAULT_ENABLE_PRIVATE_API
         )
-    sensors = [ElecPriceSensor(coordinator, SENSOR_TYPES[0], entry.unique_id)]
-    unique_id = entry.unique_id or entry.entry_id
+    sensors = [ElecPriceSensor(coordinator, SENSOR_TYPES[0], entry_unique_id)]
+    unique_id = entry_unique_id
     sensors.extend(
         PVPCAttributeSensor(coordinator, sensor_desc, unique_id)
         for sensor_desc in ATTRIBUTE_SENSOR_TYPES
@@ -692,7 +698,7 @@ async def async_setup_entry(
         if enable_private_api:
             extra_sensors.extend(SENSOR_TYPES[1:])
         sensors.extend(
-            ElecPriceSensor(coordinator, sensor_desc, entry.unique_id)
+            ElecPriceSensor(coordinator, sensor_desc, entry_unique_id)
             for sensor_desc in extra_sensors
         )
     async_add_entities(sensors)
