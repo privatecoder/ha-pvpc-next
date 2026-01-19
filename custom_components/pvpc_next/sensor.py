@@ -372,6 +372,23 @@ def _better_price_level(
     return _price_level_from_ratio(ratio)
 
 
+def _num_better_prices_ahead(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> int | None:
+    current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
+    if not current_prices:
+        return None
+    now_utc = ensure_utc_time(dt_util.utcnow())
+    try:
+        current_price = current_prices[
+            now_utc.replace(minute=0, second=0, microsecond=0)
+        ]
+    except KeyError:
+        return None
+    return sum(
+        1 for ts, price in current_prices.items() if ts > now_utc and price < current_price
+    )
+
 def _price_level_from_ratio(price_ratio: float) -> str:
     for threshold, label in _PRICE_LEVEL_THRESHOLDS:
         if price_ratio <= threshold:
@@ -580,7 +597,7 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
     PVPCAttributeSensorDescription(
         key="pvpc_num_better_prices_ahead",
         name="Better Prices Ahead",
-        attribute_key="num_better_prices_ahead",
+        value_fn=_num_better_prices_ahead,
         icon="mdi:counter",
         update_on_hour=True,
     ),
