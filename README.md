@@ -33,7 +33,7 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 ## Sensors
 
 - Price sensors: Current Price; private API adds Injection Price, MAG tax, and OMIE Price (MAG tax and OMIE Price are disabled by default).
-- Attribute sensors: Tariff, Current Period, Current Power Period, Next Power Period, Next Power Period In, Next Period, Next Period In, Available Power, Min Price, Max Price, Next Best Price, Next Price, Next Price In, Next Best In, Better Prices Ahead, Current Price Level, Next Price Level, Next Best Level.
+- Attribute sensors: Tariff, Current Period, Current Power Period, Next Power Period, Next Power Period In, Next Period, Next Period In, Available Power, Min Price, Max Price, Avg. Price Today, Avg. Price Tomorrow, Next Best Price, Next Price, Next Price In, Next Best In, Better Prices Ahead, Current Price Level, Next Price Level, Next Best Level.
 - Diagnostic sensors: PVPC Data ID, API Source; private API adds Injection Price Data ID, MAG Tax Data ID, and OMIE Price Data ID (MAG/OMIE data IDs are disabled by default).
 
 ---

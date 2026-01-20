@@ -389,6 +389,45 @@ def _num_better_prices_ahead(
         1 for ts, price in current_prices.items() if ts > now_utc and price < current_price
     )
 
+
+def _avg_price_today(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> StateType:
+    current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
+    if not current_prices:
+        return None
+    local_tz = _local_timezone(coordinator)
+    today = ensure_utc_time(dt_util.utcnow()).astimezone(local_tz).date()
+    prices_today = [
+        price
+        for ts, price in current_prices.items()
+        if ts.astimezone(local_tz).date() == today
+    ]
+    if not prices_today:
+        return None
+    return round(sum(prices_today) / len(prices_today), 5)
+
+
+def _avg_price_tomorrow(
+    coordinator: ElecPricesDataUpdateCoordinator,
+) -> StateType:
+    current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
+    if not current_prices:
+        return None
+    local_tz = _local_timezone(coordinator)
+    tomorrow = (
+        ensure_utc_time(dt_util.utcnow()).astimezone(local_tz).date()
+        + timedelta(days=1)
+    )
+    prices_tomorrow = [
+        price
+        for ts, price in current_prices.items()
+        if ts.astimezone(local_tz).date() == tomorrow
+    ]
+    if not prices_tomorrow:
+        return None
+    return round(sum(prices_tomorrow) / len(prices_tomorrow), 5)
+
 def _price_level_from_ratio(price_ratio: float) -> str:
     for threshold, label in _PRICE_LEVEL_THRESHOLDS:
         if price_ratio <= threshold:
@@ -600,6 +639,25 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         value_fn=_num_better_prices_ahead,
         icon="mdi:counter",
         update_on_hour=True,
+    ),
+    PVPCAttributeSensorDescription(
+        key="pvpc_avg_price_today",
+        name="Avg. Price Today",
+        value_fn=_avg_price_today,
+        native_unit_of_measurement=_PRICE_UNIT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=5,
+        icon="mdi:chart-line",
+        update_on_hour=True,
+    ),
+    PVPCAttributeSensorDescription(
+        key="pvpc_avg_price_tomorrow",
+        name="Avg. Price Tomorrow",
+        value_fn=_avg_price_tomorrow,
+        native_unit_of_measurement=_PRICE_UNIT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=5,
+        icon="mdi:chart-line-variant",
     ),
     PVPCAttributeSensorDescription(
         key="pvpc_price_ratio_category",
