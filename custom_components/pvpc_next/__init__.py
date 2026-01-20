@@ -6,7 +6,7 @@ from homeassistant.const import CONF_API_TOKEN, CONF_NAME, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from .aiopvpc.const import TARIFF_ALIASES, normalize_tariff
+from aiopvpc.const import TARIFF_ALIASES, normalize_tariff
 from .coordinator import ElecPricesDataUpdateCoordinator, PVPCConfigEntry
 from .helpers import get_enabled_sensor_keys
 from .const import (

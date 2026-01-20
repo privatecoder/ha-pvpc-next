@@ -30,7 +30,7 @@ from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .aiopvpc.const import (
+from aiopvpc.const import (
     KEY_INJECTION,
     KEY_MAG,
     KEY_OMIE,
@@ -38,11 +38,11 @@ from .aiopvpc.const import (
     SENSOR_KEY_TO_DATAID,
     TARIFFS,
 )
-from .aiopvpc.pvpc_tariff import (
+from aiopvpc.pvpc_tariff import (
     get_current_and_next_power_periods,
     get_current_and_next_price_periods,
 )
-from .aiopvpc.utils import ensure_utc_time
+from aiopvpc.utils import ensure_utc_time
 from .const import (
     ATTR_ENABLE_PRIVATE_API,
     DEFAULT_ENABLE_PRIVATE_API,

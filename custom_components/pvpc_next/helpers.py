@@ -2,7 +2,7 @@
 
 from homeassistant.helpers.entity_registry import RegistryEntry
 
-from .aiopvpc.const import (
+from aiopvpc.const import (
     ALL_SENSORS,
     KEY_INJECTION,
     KEY_MAG,

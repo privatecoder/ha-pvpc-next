@@ -11,7 +11,7 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - New PVPC sensors that expose key attributes as standalone entities (e.g., tariff, current/next period, hours to next period, min/max price, price levels, better prices ahead, and time to better price).
 - Calculated sensors for price levels (current, next and next best price).
 - Configurable Better Price Target (default: very cheap) to pick the next neutral/cheap/very cheap window; if none match, it falls back to the lowest available future price.
-- National holidays handled via the `holidays` library (no more hardcoded yearly tables).
+- National holidays handled via a forked `aiopvpc` library that integrates the `holidays` dataset (no more hardcoded yearly tables).
 - General bugfixes, hardening, and stability improvements.
 
 ---

@@ -2,7 +2,7 @@
 
 import voluptuous as vol
 
-from .aiopvpc.const import TARIFFS
+from aiopvpc.const import TARIFFS
 
 DOMAIN = "pvpc_next"
 

@@ -23,7 +23,7 @@ from homeassistant.helpers.selector import (
 )
 from homeassistant.util import dt as dt_util
 
-from .aiopvpc import PVPCData, DEFAULT_POWER_KW
+from aiopvpc import PVPCData, DEFAULT_POWER_KW
 from .const import (
     BETTER_PRICE_TARGETS,
     DOMAIN,
