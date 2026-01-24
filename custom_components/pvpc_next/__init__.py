@@ -15,11 +15,14 @@ from .const import (
     ATTR_POWER_P1,
     ATTR_POWER_P3,
     ATTR_TARIFF,
+    DEFAULT_UPDATE_FREQUENCY,
     DEFAULT_ENABLE_PRIVATE_API,
     LEGACY_ATTR_ENABLE_INJECTION_PRICE,
     LEGACY_ATTR_POWER,
     LEGACY_ATTR_POWER_P2_P3,
     LEGACY_ATTR_POWER_P3,
+    UPDATE_FREQUENCY_BY_SENSOR,
+    UPDATE_FREQUENCY_OPTIONS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,7 +79,50 @@ async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool
 
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _apply_update_frequency_disables(entity_registry, entry, config)
     return True
+
+
+def _apply_update_frequency_disables(
+    entity_registry: er.EntityRegistry,
+    entry: PVPCConfigEntry,
+    config: dict,
+) -> None:
+    """Disable/enable minute-update sensors based on options."""
+    entity_entries = er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+    if not entity_entries:
+        return
+    for entity_entry in entity_entries:
+        unique_id = entity_entry.unique_id
+        if not unique_id:
+            continue
+        matched = False
+        for sensor_key, option_key in UPDATE_FREQUENCY_BY_SENSOR.items():
+            if unique_id.endswith(f"_{sensor_key}"):
+                matched = True
+                frequency = config.get(option_key, DEFAULT_UPDATE_FREQUENCY)
+                if frequency not in UPDATE_FREQUENCY_OPTIONS:
+                    frequency = DEFAULT_UPDATE_FREQUENCY
+                if frequency == "disabled":
+                    if (
+                        entity_entry.disabled_by
+                        != er.RegistryEntryDisabler.INTEGRATION
+                    ):
+                        entity_registry.async_update_entity(
+                            entity_entry.entity_id,
+                            disabled_by=er.RegistryEntryDisabler.INTEGRATION,
+                        )
+                elif (
+                    entity_entry.disabled_by
+                    == er.RegistryEntryDisabler.INTEGRATION
+                ):
+                    entity_registry.async_update_entity(
+                        entity_entry.entity_id,
+                        disabled_by=None,
+                    )
+                break
+        if not matched:
+            continue
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool:

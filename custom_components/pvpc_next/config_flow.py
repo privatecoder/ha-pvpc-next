@@ -29,10 +29,15 @@ from .const import (
     DOMAIN,
     DEFAULT_NAME,
     DEFAULT_TARIFF,
+    DEFAULT_UPDATE_FREQUENCY,
     ATTR_POWER_P1,
     ATTR_POWER_P3,
     ATTR_BETTER_PRICE_TARGET,
     ATTR_ENABLE_PRIVATE_API,
+    ATTR_NEXT_BEST_IN_UPDATE,
+    ATTR_NEXT_PERIOD_IN_UPDATE,
+    ATTR_NEXT_POWER_PERIOD_IN_UPDATE,
+    ATTR_NEXT_PRICE_IN_UPDATE,
     ATTR_TARIFF,
     LEGACY_ATTR_ENABLE_INJECTION_PRICE,
     LEGACY_ATTR_POWER,
@@ -40,6 +45,7 @@ from .const import (
     LEGACY_ATTR_POWER_P3,
     DEFAULT_BETTER_PRICE_TARGET,
     DEFAULT_ENABLE_PRIVATE_API,
+    UPDATE_FREQUENCY_OPTIONS,
     VALID_POWER,
     VALID_TARIFF,
 )
@@ -56,6 +62,10 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
     _power_p3: float | None = None
     _better_price_target: str | None = None
     _enable_private_api: bool | None = None
+    _next_price_in_update: str | None = None
+    _next_best_in_update: str | None = None
+    _next_period_in_update: str | None = None
+    _next_power_period_in_update: str | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options."""
@@ -74,6 +84,22 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
         better_price_target = options.get(
             ATTR_BETTER_PRICE_TARGET,
             data.get(ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET),
+        )
+        next_price_in_update = options.get(
+            ATTR_NEXT_PRICE_IN_UPDATE,
+            data.get(ATTR_NEXT_PRICE_IN_UPDATE, DEFAULT_UPDATE_FREQUENCY),
+        )
+        next_best_in_update = options.get(
+            ATTR_NEXT_BEST_IN_UPDATE,
+            data.get(ATTR_NEXT_BEST_IN_UPDATE, DEFAULT_UPDATE_FREQUENCY),
+        )
+        next_period_in_update = options.get(
+            ATTR_NEXT_PERIOD_IN_UPDATE,
+            data.get(ATTR_NEXT_PERIOD_IN_UPDATE, DEFAULT_UPDATE_FREQUENCY),
+        )
+        next_power_period_in_update = options.get(
+            ATTR_NEXT_POWER_PERIOD_IN_UPDATE,
+            data.get(ATTR_NEXT_POWER_PERIOD_IN_UPDATE, DEFAULT_UPDATE_FREQUENCY),
         )
         api_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
         enable_private_api = options.get(ATTR_ENABLE_PRIVATE_API)
@@ -101,6 +127,43 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                         mode=SelectSelectorMode.DROPDOWN,
                     )
                 ),
+                vol.Required(
+                    ATTR_NEXT_PRICE_IN_UPDATE, default=next_price_in_update
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(UPDATE_FREQUENCY_OPTIONS),
+                        translation_key="update_frequency",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    ATTR_NEXT_BEST_IN_UPDATE, default=next_best_in_update
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(UPDATE_FREQUENCY_OPTIONS),
+                        translation_key="update_frequency",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    ATTR_NEXT_PERIOD_IN_UPDATE, default=next_period_in_update
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(UPDATE_FREQUENCY_OPTIONS),
+                        translation_key="update_frequency",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    ATTR_NEXT_POWER_PERIOD_IN_UPDATE,
+                    default=next_power_period_in_update,
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(UPDATE_FREQUENCY_OPTIONS),
+                        translation_key="update_frequency",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Required(ATTR_ENABLE_PRIVATE_API, default=enable_private_api): bool,
             }
         )
@@ -109,6 +172,12 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
             self._power_p1 = user_input[ATTR_POWER_P1]
             self._power_p3 = user_input[ATTR_POWER_P3]
             self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
+            self._next_price_in_update = user_input[ATTR_NEXT_PRICE_IN_UPDATE]
+            self._next_best_in_update = user_input[ATTR_NEXT_BEST_IN_UPDATE]
+            self._next_period_in_update = user_input[ATTR_NEXT_PERIOD_IN_UPDATE]
+            self._next_power_period_in_update = user_input[
+                ATTR_NEXT_POWER_PERIOD_IN_UPDATE
+            ]
             self._enable_private_api = user_input[ATTR_ENABLE_PRIVATE_API]
             if self._enable_private_api:
                 existing_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
@@ -119,6 +188,12 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                             ATTR_POWER_P1: self._power_p1,
                             ATTR_POWER_P3: self._power_p3,
                             ATTR_BETTER_PRICE_TARGET: self._better_price_target,
+                            ATTR_NEXT_PRICE_IN_UPDATE: self._next_price_in_update,
+                            ATTR_NEXT_BEST_IN_UPDATE: self._next_best_in_update,
+                            ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
+                            ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
+                                self._next_power_period_in_update
+                            ),
                             ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                             CONF_API_TOKEN: existing_token,
                         },
@@ -130,6 +205,12 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                     ATTR_POWER_P1: self._power_p1,
                     ATTR_POWER_P3: self._power_p3,
                     ATTR_BETTER_PRICE_TARGET: self._better_price_target,
+                    ATTR_NEXT_PRICE_IN_UPDATE: self._next_price_in_update,
+                    ATTR_NEXT_BEST_IN_UPDATE: self._next_best_in_update,
+                    ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
+                    ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
+                        self._next_power_period_in_update
+                    ),
                     ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: None,
                 },
@@ -147,6 +228,12 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                     ATTR_POWER_P1: self._power_p1,
                     ATTR_POWER_P3: self._power_p3,
                     ATTR_BETTER_PRICE_TARGET: self._better_price_target,
+                    ATTR_NEXT_PRICE_IN_UPDATE: self._next_price_in_update,
+                    ATTR_NEXT_BEST_IN_UPDATE: self._next_best_in_update,
+                    ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
+                    ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
+                        self._next_power_period_in_update
+                    ),
                     ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: api_token,
                 },
@@ -175,6 +262,10 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
     _power_p3: float | None = None
     _better_price_target: str | None = None
     _enable_private_api: bool | None = None
+    _next_price_in_update: str | None = None
+    _next_best_in_update: str | None = None
+    _next_period_in_update: str | None = None
+    _next_power_period_in_update: str | None = None
     _api_token: str | None = None
     _api: PVPCData | None = None
 
@@ -195,6 +286,12 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             self._power_p1 = user_input[ATTR_POWER_P1]
             self._power_p3 = user_input[ATTR_POWER_P3]
             self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
+            self._next_price_in_update = user_input[ATTR_NEXT_PRICE_IN_UPDATE]
+            self._next_best_in_update = user_input[ATTR_NEXT_BEST_IN_UPDATE]
+            self._next_period_in_update = user_input[ATTR_NEXT_PERIOD_IN_UPDATE]
+            self._next_power_period_in_update = user_input[
+                ATTR_NEXT_POWER_PERIOD_IN_UPDATE
+            ]
             self._enable_private_api = user_input[ATTR_ENABLE_PRIVATE_API]
 
             if self._enable_private_api:
@@ -207,6 +304,12 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                     ATTR_POWER_P1: self._power_p1,
                     ATTR_POWER_P3: self._power_p3,
                     ATTR_BETTER_PRICE_TARGET: self._better_price_target,
+                    ATTR_NEXT_PRICE_IN_UPDATE: self._next_price_in_update,
+                    ATTR_NEXT_BEST_IN_UPDATE: self._next_best_in_update,
+                    ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
+                    ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
+                        self._next_power_period_in_update
+                    ),
                     ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: None,
                 },
@@ -224,6 +327,43 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                     SelectSelectorConfig(
                         options=list(BETTER_PRICE_TARGETS),
                         translation_key="better_price_target",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    ATTR_NEXT_PRICE_IN_UPDATE, default=DEFAULT_UPDATE_FREQUENCY
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(UPDATE_FREQUENCY_OPTIONS),
+                        translation_key="update_frequency",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    ATTR_NEXT_BEST_IN_UPDATE, default=DEFAULT_UPDATE_FREQUENCY
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(UPDATE_FREQUENCY_OPTIONS),
+                        translation_key="update_frequency",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    ATTR_NEXT_PERIOD_IN_UPDATE, default=DEFAULT_UPDATE_FREQUENCY
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(UPDATE_FREQUENCY_OPTIONS),
+                        translation_key="update_frequency",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    ATTR_NEXT_POWER_PERIOD_IN_UPDATE,
+                    default=DEFAULT_UPDATE_FREQUENCY,
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(UPDATE_FREQUENCY_OPTIONS),
+                        translation_key="update_frequency",
                         mode=SelectSelectorMode.DROPDOWN,
                     )
                 ),
@@ -268,6 +408,10 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             ATTR_POWER_P1: self._power_p1,
             ATTR_POWER_P3: self._power_p3,
             ATTR_BETTER_PRICE_TARGET: self._better_price_target,
+            ATTR_NEXT_PRICE_IN_UPDATE: self._next_price_in_update,
+            ATTR_NEXT_BEST_IN_UPDATE: self._next_best_in_update,
+            ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
+            ATTR_NEXT_POWER_PERIOD_IN_UPDATE: self._next_power_period_in_update,
             ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
             CONF_API_TOKEN: self._api_token,
         }

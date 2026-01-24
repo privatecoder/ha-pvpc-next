@@ -29,6 +29,10 @@
           "power_p3": "P3 (llano) (kW)",
           "tariff": "Tarifa aplicable por zona geográfica",
           "better_price_target": "Objetivo de mejor precio",
+          "next_price_in_update": "Frecuencia de Next Price In",
+          "next_best_in_update": "Frecuencia de Next Best In",
+          "next_period_in_update": "Frecuencia de Next Period In",
+          "next_power_period_in_update": "Frecuencia de Next Power Period In",
           "enable_private_api": "Activar obtención con token de API (API privada)"
         }
       }
@@ -49,6 +53,10 @@
           "power_p1": "P1 (punta) (kW)",
           "power_p3": "P3 (llano) (kW)",
           "better_price_target": "Objetivo de mejor precio",
+          "next_price_in_update": "Frecuencia de Next Price In",
+          "next_best_in_update": "Frecuencia de Next Best In",
+          "next_period_in_update": "Frecuencia de Next Period In",
+          "next_power_period_in_update": "Frecuencia de Next Power Period In",
           "enable_private_api": "Activar obtención con token de API (API privada)"
         }
       }
@@ -73,6 +81,13 @@
         "neutral": "Neutral",
         "cheap": "Barato",
         "very cheap": "Muy barato"
+      }
+    },
+    "update_frequency": {
+      "options": {
+        "disabled": "Desactivado",
+        "hourly": "Cada hora",
+        "minute": "Cada minuto"
       }
     }
   }

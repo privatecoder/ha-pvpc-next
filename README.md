@@ -33,7 +33,7 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 ## Sensors
 
 - Price sensors: Current Price; private API adds Injection Price, MAG tax, and OMIE Price (MAG tax and OMIE Price are disabled by default).
-- Attribute sensors: Tariff, Current Period, Current Power Period, Next Power Period, Next Power Period In, Next Period, Next Period In, Available Power, Min Price, Max Price, Avg. Price Today, Avg. Price Tomorrow, Next Best Price, Next Price, Next Price In, Next Best In, Better Prices Ahead, Current Price Level, Next Price Level, Next Best Level.
+- Attribute sensors: Tariff, Current Period, Current Power Period, Next Power Period, Next Power Period In, Next Period, Next Period In, Available Power, Min Price, Max Price, Avg. Price Today, Next Best Price, Next Price, Next Price In, Next Best In, Better Prices Ahead, Current Price Level, Next Price Level, Next Best Level.
 - Diagnostic sensors: PVPC Data ID, API Source; private API adds Injection Price Data ID, MAG Tax Data ID, and OMIE Price Data ID (MAG/OMIE data IDs are disabled by default).
 
 ---
@@ -41,6 +41,7 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 ## Configuration & behavior
 
 - Price levels are relative to each day's price range (very cheap to very expensive).
+- Better Price Target thresholds use `price_ratio` buckets: neutral <= 0.60, cheap <= 0.40, very cheap <= 0.20 (ratios are relative to each day's min/max range).
 - Better Price Target options: neutral, cheap, very cheap (default: very cheap). Next Best Price, Next Best In, and Next Best Level point to the next hour that meets the target or better, and fall back to the lowest available future price if none match.
 - Price periods (P1/P2/P3) and power periods (P1/P3) follow different rules; see the Endesa overview [here](https://www.endesa.com/es/blog/blog-de-endesa/horarios-luz-valle-punta-llano) and EnergiaXXI notes [here](https://www.energiaxxi.com/es/facturas/cambios-factura-luz).
 - Price periods for "2.0TD Península / Baleares / Canarias": weekdays P1 10:00-14:00 and 18:00-22:00; P2 08:00-10:00, 14:00-18:00, 22:00-00:00; P3 00:00-08:00; weekends and national holidays are P3 all day.
@@ -49,9 +50,21 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Tariff selection controls the geographic zone (Península/Baleares/Canarias vs Ceuta/Melilla).
 - Contracted power (P1 and P3) is used to compute the Available Power sensor (in W).
 - Change Better Price Target via **Settings -> Devices & Integrations -> PVPC Next -> Configure**.
+- Update frequency for Next Price In, Next Best In, Next Period In, and Next Power Period In can be set to disabled/hourly/every minute in **Configure**; disabled will turn the entity off in the registry.
 - If no target is found, Next Best sensors show Unknown; if price data is missing, they show Unavailable.
 - The old "PVPC" sensor is now "Current Price" and keeps the remaining attributes that are not exposed as separate sensors.
 - Private API usage is optional and disabled by default; it requires an ESIOS API token and can be enabled in **Configure** (enables Injection Price, MAG tax and OMIE Price sensors).
+- Recorder exclusions are configured in `configuration.yaml` (not from the integration), for example:
+
+```yaml
+recorder:
+  exclude:
+    entities:
+      - sensor.esios_next_price_in
+      - sensor.esios_next_best_in
+      - sensor.esios_next_period_in
+      - sensor.esios_next_power_period_in
+```
 
 ---
 

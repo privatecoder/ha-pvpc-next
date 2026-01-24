@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 import logging
 from typing import Any
@@ -45,10 +45,17 @@ from aiopvpc.pvpc_tariff import (
 from aiopvpc.utils import ensure_utc_time
 from .const import (
     ATTR_ENABLE_PRIVATE_API,
+    ATTR_NEXT_BEST_IN_UPDATE,
+    ATTR_NEXT_PERIOD_IN_UPDATE,
+    ATTR_NEXT_POWER_PERIOD_IN_UPDATE,
+    ATTR_NEXT_PRICE_IN_UPDATE,
+    DEFAULT_UPDATE_FREQUENCY,
     DEFAULT_ENABLE_PRIVATE_API,
     LEGACY_ATTR_ENABLE_INJECTION_PRICE,
     DOMAIN,
     normalize_better_price_target,
+    UPDATE_FREQUENCY_BY_SENSOR,
+    UPDATE_FREQUENCY_OPTIONS,
 )
 from .coordinator import ElecPricesDataUpdateCoordinator, PVPCConfigEntry
 from .helpers import make_sensor_unique_id
@@ -92,9 +99,9 @@ def _format_time_to_better_price(
     next_ts, _price, _ratio = next_target
     now_utc = ensure_utc_time(dt_util.utcnow())
     delta_seconds = int((next_ts - now_utc).total_seconds())
-    hours, remainder = divmod(max(delta_seconds, 0), 3600)
-    minutes = remainder // 60
-    return f"{hours:02d}:{minutes:02d}"
+    return _format_time_delta(
+        coordinator, "pvpc_time_to_next_best", delta_seconds
+    )
 
 
 def _format_time_to_next_price(
@@ -109,9 +116,9 @@ def _format_time_to_next_price(
     next_ts, _price = next_price
     now_utc = ensure_utc_time(dt_util.utcnow())
     delta_seconds = int((next_ts - now_utc).total_seconds())
-    hours, remainder = divmod(max(delta_seconds, 0), 3600)
-    minutes = remainder // 60
-    return f"{hours:02d}:{minutes:02d}"
+    return _format_time_delta(
+        coordinator, "pvpc_next_price_in", delta_seconds
+    )
 
 
 def _format_time_to_next_period(
@@ -128,9 +135,9 @@ def _format_time_to_next_period(
     )
     next_period_start = hour_start + delta
     delta_seconds = int((next_period_start - now_local).total_seconds())
-    hours, remainder = divmod(max(delta_seconds, 0), 3600)
-    minutes = remainder // 60
-    return f"{hours:02d}:{minutes:02d}"
+    return _format_time_delta(
+        coordinator, "pvpc_next_period_in", delta_seconds
+    )
 
 
 def _format_time_to_next_power_period(
@@ -147,9 +154,67 @@ def _format_time_to_next_power_period(
     )
     next_period_start = hour_start + delta
     delta_seconds = int((next_period_start - now_local).total_seconds())
-    hours, remainder = divmod(max(delta_seconds, 0), 3600)
+    return _format_time_delta(
+        coordinator, "pvpc_next_power_period_in", delta_seconds
+    )
+
+
+def _normalize_update_frequency(value: str | None) -> str:
+    if value in UPDATE_FREQUENCY_OPTIONS:
+        return value
+    return DEFAULT_UPDATE_FREQUENCY
+
+
+def _get_update_frequency(
+    coordinator: ElecPricesDataUpdateCoordinator, sensor_key: str
+) -> str:
+    option_key = UPDATE_FREQUENCY_BY_SENSOR.get(sensor_key)
+    if not option_key:
+        return DEFAULT_UPDATE_FREQUENCY
+    config = {**coordinator.config_entry.data, **coordinator.config_entry.options}
+    return _normalize_update_frequency(config.get(option_key))
+
+
+def _format_time_delta(
+    coordinator: ElecPricesDataUpdateCoordinator,
+    sensor_key: str,
+    delta_seconds: int,
+) -> str:
+    delta_seconds = max(delta_seconds, 0)
+    if _get_update_frequency(coordinator, sensor_key) != "minute":
+        hours, remainder = divmod(delta_seconds, 3600)
+        if remainder:
+            hours += 1
+        return f"{hours:02d}:00"
+    hours, remainder = divmod(delta_seconds, 3600)
     minutes = remainder // 60
     return f"{hours:02d}:{minutes:02d}"
+
+
+def _apply_update_frequency(
+    description: PVPCAttributeSensorDescription,
+    frequency: str,
+) -> PVPCAttributeSensorDescription:
+    if frequency == "minute":
+        return replace(
+            description,
+            update_every_minute=True,
+            update_on_hour=False,
+        )
+    if frequency == "hourly":
+        return replace(
+            description,
+            update_every_minute=False,
+            update_on_hour=True,
+        )
+    if frequency == "disabled":
+        return replace(
+            description,
+            update_every_minute=False,
+            update_on_hour=False,
+            entity_registry_enabled_default=False,
+        )
+    return description
 
 
 def _price_ratio_category(
@@ -408,26 +473,6 @@ def _avg_price_today(
     return round(sum(prices_today) / len(prices_today), 5)
 
 
-def _avg_price_tomorrow(
-    coordinator: ElecPricesDataUpdateCoordinator,
-) -> StateType:
-    current_prices = coordinator.data.sensors.get(KEY_PVPC, {})
-    if not current_prices:
-        return None
-    local_tz = _local_timezone(coordinator)
-    tomorrow = (
-        ensure_utc_time(dt_util.utcnow()).astimezone(local_tz).date()
-        + timedelta(days=1)
-    )
-    prices_tomorrow = [
-        price
-        for ts, price in current_prices.items()
-        if ts.astimezone(local_tz).date() == tomorrow
-    ]
-    if not prices_tomorrow:
-        return None
-    return round(sum(prices_tomorrow) / len(prices_tomorrow), 5)
-
 def _price_level_from_ratio(price_ratio: float) -> str:
     for threshold, label in _PRICE_LEVEL_THRESHOLDS:
         if price_ratio <= threshold:
@@ -651,15 +696,6 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         update_on_hour=True,
     ),
     PVPCAttributeSensorDescription(
-        key="pvpc_avg_price_tomorrow",
-        name="Avg. Price Tomorrow",
-        value_fn=_avg_price_tomorrow,
-        native_unit_of_measurement=_PRICE_UNIT,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=5,
-        icon="mdi:chart-line-variant",
-    ),
-    PVPCAttributeSensorDescription(
         key="pvpc_price_ratio_category",
         name="Current Price Level",
         value_fn=_price_ratio_category,
@@ -802,10 +838,12 @@ async def async_setup_entry(
         )
     sensors = [ElecPriceSensor(coordinator, SENSOR_TYPES[0], entry_unique_id)]
     unique_id = entry_unique_id
-    sensors.extend(
-        PVPCAttributeSensor(coordinator, sensor_desc, unique_id)
-        for sensor_desc in ATTRIBUTE_SENSOR_TYPES
-    )
+    for sensor_desc in ATTRIBUTE_SENSOR_TYPES:
+        update_key = UPDATE_FREQUENCY_BY_SENSOR.get(sensor_desc.key)
+        if update_key:
+            update_value = _normalize_update_frequency(config.get(update_key))
+            sensor_desc = _apply_update_frequency(sensor_desc, update_value)
+        sensors.append(PVPCAttributeSensor(coordinator, sensor_desc, unique_id))
     if enable_private_api and coordinator.api.using_private_api:
         sensors.extend(
             PVPCAttributeSensor(coordinator, sensor_desc, unique_id)
@@ -946,6 +984,8 @@ class PVPCAttributeSensor(CoordinatorEntity[ElecPricesDataUpdateCoordinator], Se
                     self.hass, self._update_on_time_change, minute=[0], second=[0]
                 )
             )
+        if self.entity_description.key in UPDATE_FREQUENCY_BY_SENSOR:
+            self._update_on_time_change(dt_util.utcnow())
 
     @callback
     def _handle_coordinator_update(self) -> None:

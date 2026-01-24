@@ -29,6 +29,10 @@
           "power_p3": "P3 (pla) (kW)",
           "tariff": "Tarifa aplicable per zona geogràfica",
           "better_price_target": "Objectiu de millor preu",
+          "next_price_in_update": "Freqüència de Next Price In",
+          "next_best_in_update": "Freqüència de Next Best In",
+          "next_period_in_update": "Freqüència de Next Period In",
+          "next_power_period_in_update": "Freqüència de Next Power Period In",
           "enable_private_api": "Activa l'obtenció amb token d'API (API privada)"
         }
       }
@@ -49,6 +53,10 @@
           "power_p1": "P1 (punta) (kW)",
           "power_p3": "P3 (pla) (kW)",
           "better_price_target": "Objectiu de millor preu",
+          "next_price_in_update": "Freqüència de Next Price In",
+          "next_best_in_update": "Freqüència de Next Best In",
+          "next_period_in_update": "Freqüència de Next Period In",
+          "next_power_period_in_update": "Freqüència de Next Power Period In",
           "enable_private_api": "Activa l'obtenció amb token d'API (API privada)"
         }
       }
@@ -73,6 +81,13 @@
         "neutral": "Neutral",
         "cheap": "Barat",
         "very cheap": "Molt barat"
+      }
+    },
+    "update_frequency": {
+      "options": {
+        "disabled": "Desactivat",
+        "hourly": "Cada hora",
+        "minute": "Cada minut"
       }
     }
   }
