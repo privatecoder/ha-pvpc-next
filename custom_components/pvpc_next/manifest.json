@@ -1,12 +1,12 @@
 {
   "domain": "pvpc_next",
   "name": "Spain Hourly Electricity Tariff (PVPC Next)",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "documentation": "https://github.com/privatecoder/ha-pvpc-next",
   "issue_tracker": "https://github.com/privatecoder/ha-pvpc-next/issues",
   "dependencies": [],
   "codeowners": ["@privatecoder"],
-  "requirements": ["aiopvpc @ git+https://github.com/privatecoder/aiopvpc@v4.3.2"],
+  "requirements": ["aiopvpc @ git+https://github.com/privatecoder/aiopvpc@v4.3.3"],
   "iot_class": "cloud_polling",
   "config_flow": true
 } 
