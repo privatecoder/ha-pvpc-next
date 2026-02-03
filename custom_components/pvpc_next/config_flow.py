@@ -298,6 +298,14 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
         """Return the options flow handler."""
         return PVPCOptionsFlowHandler()
 
+    def is_matching(self, other_flow: ConfigFlow) -> bool:
+        """Return True if another flow is configuring the same tariff."""
+        return (
+            isinstance(other_flow, TariffSelectorConfigFlow)
+            and self._tariff is not None
+            and self._tariff == getattr(other_flow, "_tariff", None)
+        )
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         """Initial configuration step."""
         if user_input is not None:

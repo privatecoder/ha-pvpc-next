@@ -45,10 +45,6 @@ from aiopvpc.pvpc_tariff import (
 from aiopvpc.utils import ensure_utc_time
 from .const import (
     ATTR_ENABLE_PRIVATE_API,
-    ATTR_NEXT_BEST_IN_UPDATE,
-    ATTR_NEXT_PERIOD_IN_UPDATE,
-    ATTR_NEXT_POWER_PERIOD_IN_UPDATE,
-    ATTR_NEXT_PRICE_IN_UPDATE,
     DEFAULT_UPDATE_FREQUENCY,
     DEFAULT_ENABLE_PRIVATE_API,
     LEGACY_ATTR_ENABLE_INJECTION_PRICE,

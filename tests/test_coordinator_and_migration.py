@@ -121,6 +121,7 @@ def test_log_api_fetch_includes_source_and_series_details(hass, caplog):
     with caplog.at_level(
         logging.DEBUG, logger="custom_components.pvpc_next.coordinator"
     ):
+        # pylint: disable=protected-access
         coordinator._log_api_fetch(
             api_data, datetime(2026, 1, 2, 2, tzinfo=timezone.utc)
         )
