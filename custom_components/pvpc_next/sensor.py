@@ -131,7 +131,9 @@ def _format_time_to_next_period(
     now_local = ensure_utc_time(dt_util.utcnow()).astimezone(local_tz)
     hour_start = now_local.replace(minute=0, second=0, microsecond=0)
     _current_period, _next_period, delta = get_current_and_next_price_periods(
-        hour_start, zone_ceuta_melilla=coordinator.api.tariff != TARIFFS[0]
+        hour_start,
+        zone_ceuta_melilla=coordinator.api.tariff != TARIFFS[0],
+        holiday_source=coordinator.holiday_source,
     )
     next_period_start = hour_start + delta
     delta_seconds = int((next_period_start - now_local).total_seconds())
@@ -150,7 +152,9 @@ def _format_time_to_next_power_period(
     now_local = ensure_utc_time(dt_util.utcnow()).astimezone(local_tz)
     hour_start = now_local.replace(minute=0, second=0, microsecond=0)
     _current_period, _next_period, delta = get_current_and_next_power_periods(
-        hour_start, zone_ceuta_melilla=coordinator.api.tariff != TARIFFS[0]
+        hour_start,
+        zone_ceuta_melilla=coordinator.api.tariff != TARIFFS[0],
+        holiday_source=coordinator.holiday_source,
     )
     next_period_start = hour_start + delta
     delta_seconds = int((next_period_start - now_local).total_seconds())

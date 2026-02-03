@@ -1,11 +1,10 @@
 """Tests for PVPC client creation and entry migration."""
 
-from datetime import date, datetime, timezone
-from types import SimpleNamespace
+from datetime import datetime, timezone
+import logging
 from unittest.mock import patch
-from unittest.mock import AsyncMock
 
-import pytest
+from aiopvpc.const import EsiosApiData
 from homeassistant.const import CONF_NAME
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -95,8 +94,8 @@ async def test_migration_sets_holiday_source_for_existing_entries(hass):
     assert entry.data[ATTR_HOLIDAY_SOURCE] == DEFAULT_HOLIDAY_SOURCE
 
 
-async def test_csv_source_warms_holiday_cache_in_executor(hass):
-    """CSV source warms current-year holiday cache once before update."""
+def test_log_api_fetch_includes_source_and_series_details(hass, caplog):
+    """Debug logs include fetched source and per-series payload details."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         title="PVPC Test",
@@ -106,114 +105,26 @@ async def test_csv_source_warms_holiday_cache_in_executor(hass):
     coordinator = ElecPricesDataUpdateCoordinator(
         hass, entry, sensor_keys=set(), use_private_api=False
     )
-    api_data = SimpleNamespace(
-        sensors={"pvpc": object()}, availability={"pvpc": True}
+    coordinator.api.sensor_attributes["PVPC"] = {"data_id": "1001"}
+    api_data = EsiosApiData(
+        last_update=datetime(2026, 1, 2, tzinfo=timezone.utc),
+        data_source="esios_public",
+        sensors={
+            "PVPC": {
+                datetime(2026, 1, 2, 0, tzinfo=timezone.utc): 0.12345,
+                datetime(2026, 1, 2, 1, tzinfo=timezone.utc): 0.23456,
+            }
+        },
+        availability={"PVPC": True},
     )
-    coordinator.api.async_update_all = AsyncMock(side_effect=[api_data, api_data])
-    current_year = 2026
 
-    with (
-        patch(
-            "custom_components.pvpc_next.coordinator._warm_aiopvpc_holidays"
-        ) as mock_warm,
-        patch(
-            "custom_components.pvpc_next.coordinator.dt_util.utcnow",
-            return_value=datetime(2026, 2, 10, tzinfo=timezone.utc),
-        ),
+    with caplog.at_level(
+        logging.DEBUG, logger="custom_components.pvpc_next.coordinator"
     ):
-        await coordinator._async_update_data()
-        await coordinator._async_update_data()
-
-    assert mock_warm.call_count == 1
-    mock_warm.assert_called_once_with(current_year, "csv")
-
-
-async def test_csv_source_retries_until_jan_six_with_provisional_cache(hass):
-    """CSV source retries current-year fetch and primes provisional cache on failure."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="PVPC Test",
-        unique_id=DEFAULT_TARIFF,
-        data={**_entry_data(), ATTR_HOLIDAY_SOURCE: "csv"},
-    )
-    coordinator = ElecPricesDataUpdateCoordinator(
-        hass, entry, sensor_keys=set(), use_private_api=False
-    )
-
-    with (
-        patch(
-            "custom_components.pvpc_next.coordinator._warm_aiopvpc_holidays",
-            side_effect=[RuntimeError("fetch failed"), None],
-        ) as mock_warm,
-        patch(
-            "custom_components.pvpc_next.coordinator._prime_aiopvpc_holiday_cache"
-        ) as mock_prime,
-        patch(
-            "custom_components.pvpc_next.coordinator._clear_aiopvpc_holiday_cache"
-        ) as mock_clear,
-    ):
-        await coordinator._async_warm_holiday_cache(
-            datetime(2026, 1, 1, tzinfo=timezone.utc)
-        )
-        await coordinator._async_warm_holiday_cache(
-            datetime(2026, 1, 5, tzinfo=timezone.utc)
+        coordinator._log_api_fetch(
+            api_data, datetime(2026, 1, 2, 2, tzinfo=timezone.utc)
         )
 
-        assert mock_warm.call_count == 2
-        assert mock_prime.call_count == 1
-        mock_clear.assert_called_once()
-        mock_prime.assert_called_once_with(
-            2026, "csv", {date(2026, 1, 1), date(2026, 1, 6)}
-        )
-
-        await coordinator._async_warm_holiday_cache(
-            datetime(2026, 1, 6, tzinfo=timezone.utc)
-        )
-
-    assert mock_warm.call_count == 2
-
-
-async def test_csv_source_raises_after_jan_six_if_fetch_still_fails(hass):
-    """CSV source does not silently suppress current-year fetch failures after Jan 6."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="PVPC Test",
-        unique_id=DEFAULT_TARIFF,
-        data={**_entry_data(), ATTR_HOLIDAY_SOURCE: "csv"},
-    )
-    coordinator = ElecPricesDataUpdateCoordinator(
-        hass, entry, sensor_keys=set(), use_private_api=False
-    )
-
-    with patch(
-        "custom_components.pvpc_next.coordinator._warm_aiopvpc_holidays",
-        side_effect=RuntimeError("fetch failed"),
-    ):
-        with pytest.raises(RuntimeError):
-            await coordinator._async_warm_holiday_cache(
-                datetime(2026, 1, 7, tzinfo=timezone.utc)
-            )
-
-
-async def test_non_csv_source_skips_holiday_cache_warmup(hass):
-    """Non-csv source does not run cache warmup."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="PVPC Test",
-        unique_id=DEFAULT_TARIFF,
-        data={**_entry_data(), ATTR_HOLIDAY_SOURCE: "python-holidays"},
-    )
-    coordinator = ElecPricesDataUpdateCoordinator(
-        hass, entry, sensor_keys=set(), use_private_api=False
-    )
-    api_data = SimpleNamespace(
-        sensors={"pvpc": object()}, availability={"pvpc": True}
-    )
-    coordinator.api.async_update_all = AsyncMock(return_value=api_data)
-
-    with patch(
-        "custom_components.pvpc_next.coordinator._warm_aiopvpc_holidays"
-    ) as mock_holidays:
-        await coordinator._async_update_data()
-
-    assert mock_holidays.call_count == 0
+    assert "source=esios_public" in caplog.text
+    assert "fetched_keys=['PVPC']" in caplog.text
+    assert "series=PVPC data_id=1001 points=2" in caplog.text

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_TOKEN
@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from aiopvpc import BadApiTokenAuthError, DEFAULT_POWER_KW, EsiosApiData, PVPCData
+from aiopvpc.const import SENSOR_KEY_TO_DATAID
 from .const import (
     ATTR_POWER_P1,
     ATTR_POWER_P3,
@@ -32,51 +33,6 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 PVPCConfigEntry = ConfigEntry["ElecPricesDataUpdateCoordinator"]
-
-
-def _warm_aiopvpc_holidays(year: int, source: str) -> None:
-    """Warm aiopvpc cached holidays for one year."""
-    from aiopvpc.pvpc_tariff import _national_p3_holidays
-
-    _national_p3_holidays(year, source)
-
-
-def _clear_aiopvpc_holiday_cache() -> None:
-    """Clear aiopvpc holiday cache."""
-    from aiopvpc.pvpc_tariff import _national_p3_holidays
-
-    _national_p3_holidays.cache_clear()
-
-
-def _prime_aiopvpc_holiday_cache(
-    year: int, source: str, provisional_holidays: set[date]
-) -> None:
-    """Prime aiopvpc current-year cache with provisional holidays."""
-    import aiopvpc.pvpc_tariff as pvpc_tariff
-
-    original_get_pvpc_holidays = pvpc_tariff.get_pvpc_holidays
-
-    def _provisional_get_pvpc_holidays(target_year: int, source: str = source):
-        if target_year == year:
-            return {day: "provisional" for day in provisional_holidays}
-        return original_get_pvpc_holidays(target_year, source=source)
-
-    pvpc_tariff.get_pvpc_holidays = _provisional_get_pvpc_holidays
-    pvpc_tariff._national_p3_holidays.cache_clear()
-    try:
-        pvpc_tariff._national_p3_holidays(year, source)
-    finally:
-        pvpc_tariff.get_pvpc_holidays = original_get_pvpc_holidays
-
-
-def _provisional_january_holidays(year: int) -> set[date]:
-    """Return provisional Jan 1 / Jan 6 holidays for one year (weekdays only)."""
-    holidays: set[date] = set()
-    for month, day in ((1, 1), (1, 6)):
-        holiday = date(year, month, day)
-        if holiday.weekday() < 5:
-            holidays.add(holiday)
-    return holidays
 
 
 class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
@@ -113,8 +69,6 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
         )
         api_token = config.get(CONF_API_TOKEN) if use_private_api else None
         self._holiday_source = holiday_source
-        self._holiday_years_warmed: set[int] = set()
-        self._holiday_years_provisional: set[int] = set()
 
         self.api = PVPCData(
             session=async_get_clientsession(hass),
@@ -145,10 +99,14 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
         """Return canonical better-price target label."""
         return self._better_price_target
 
+    @property
+    def holiday_source(self) -> str:
+        """Return configured holiday source."""
+        return self._holiday_source
+
     async def _async_update_data(self) -> EsiosApiData:
         """Update electricity prices from the ESIOS API."""
         now = dt_util.utcnow()
-        await self._async_warm_holiday_cache(now)
         try:
             api_data = await self.api.async_update_all(self.data, now)
         except BadApiTokenAuthError as exc:
@@ -159,37 +117,53 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
             or not any(api_data.availability.values())
         ):
             raise UpdateFailed
+        self._log_api_fetch(api_data, now)
         return api_data
 
-    async def _async_warm_holiday_cache(self, now: datetime) -> None:
-        """Warm aiopvpc holiday cache off the event loop for csv source."""
-        if self._holiday_source != "csv":
+    def _log_api_fetch(self, api_data: EsiosApiData, now: datetime) -> None:
+        """Log fetched API payload details when debug logging is enabled."""
+        if not _LOGGER.isEnabledFor(logging.DEBUG):
             return
-        local_date = dt_util.as_local(now).date()
-        local_year = local_date.year
-        if local_year in self._holiday_years_warmed:
-            return
-        if local_year in self._holiday_years_provisional:
-            await self.hass.async_add_executor_job(_clear_aiopvpc_holiday_cache)
 
-        try:
-            await self.hass.async_add_executor_job(
-                _warm_aiopvpc_holidays, local_year, self._holiday_source
-            )
-            self._holiday_years_warmed.add(local_year)
-            self._holiday_years_provisional.discard(local_year)
-            return
-        except Exception:  # noqa: BLE001
-            # Jan 1..6: keep retrying current-year fetch while preserving known
-            # holiday behavior for Jan 1 / Jan 6 in a provisional cache.
-            if local_date.month != 1 or local_date.day > 6:
-                raise
-
-        provisional_holidays = _provisional_january_holidays(local_year)
-        await self.hass.async_add_executor_job(
-            _prime_aiopvpc_holiday_cache,
-            local_year,
-            self._holiday_source,
-            provisional_holidays,
+        fetched_keys = sorted(
+            key for key, available in api_data.availability.items() if available
         )
-        self._holiday_years_provisional.add(local_year)
+        unavailable_keys = sorted(
+            key for key, available in api_data.availability.items() if not available
+        )
+        indicator_ids = {
+            key: SENSOR_KEY_TO_DATAID.get(key, "n/a") for key in fetched_keys
+        }
+        _LOGGER.debug(
+            "PVPC API fetch source=%s private=%s holiday_source=%s at=%s "
+            "fetched_keys=%s unavailable_keys=%s indicator_ids=%s",
+            api_data.data_source,
+            self.api.using_private_api,
+            self._holiday_source,
+            now.isoformat(),
+            fetched_keys,
+            unavailable_keys,
+            indicator_ids,
+        )
+
+        for key in fetched_keys:
+            series = api_data.sensors.get(key, {})
+            if not series:
+                _LOGGER.debug("PVPC API fetch series=%s points=0", key)
+                continue
+            first_ts = min(series)
+            last_ts = max(series)
+            min_price = min(series.values())
+            max_price = max(series.values())
+            data_id = self.api.sensor_attributes.get(key, {}).get("data_id")
+            _LOGGER.debug(
+                "PVPC API fetch series=%s data_id=%s points=%d first=%s last=%s "
+                "min=%.5f max=%.5f",
+                key,
+                data_id,
+                len(series),
+                first_ts.isoformat(),
+                last_ts.isoformat(),
+                min_price,
+                max_price,
+            )

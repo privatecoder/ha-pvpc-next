@@ -55,7 +55,6 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Holiday source can be set in **Configure**:
   - `csv` (default in aiopvpc `PVPCData` and CLI).
   - `python-holidays` (uses the Holidays python library).
-- With `csv`, holiday cache warmup is done in the executor; current-year fetch starts on January 1. If it fails, a provisional Jan 1 / Jan 6 cache is used and the current-year fetch is retried until January 6.
 - If no target is found, Next Best sensors show Unknown; if price data is missing, they show Unavailable.
 - The old "PVPC" sensor is now "Current Price" and keeps the remaining attributes that are not exposed as separate sensors.
 - Private API usage is optional and disabled by default; it requires an ESIOS API token and can be enabled in **Configure** (enables Injection Price, MAG tax and OMIE Price sensors).

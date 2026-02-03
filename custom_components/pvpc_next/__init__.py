@@ -13,6 +13,10 @@ from .const import (
     ATTR_BETTER_PRICE_TARGET,
     ATTR_ENABLE_PRIVATE_API,
     ATTR_HOLIDAY_SOURCE,
+    ATTR_NEXT_BEST_IN_UPDATE,
+    ATTR_NEXT_PERIOD_IN_UPDATE,
+    ATTR_NEXT_POWER_PERIOD_IN_UPDATE,
+    ATTR_NEXT_PRICE_IN_UPDATE,
     ATTR_POWER_P1,
     ATTR_POWER_P3,
     ATTR_TARIFF,
@@ -29,12 +33,32 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_DEPENDENCY_LOGGERS: tuple[str, ...] = (
+    "aiopvpc",
+    "pvpc_holidays",
+    "pvpc_holidays.core",
+    "pvpc_holidays.csv_source",
+    "pvpc_holidays.holidays_source",
+)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
+def _sync_dependency_log_levels() -> None:
+    """Align dependency logger levels with integration logger level."""
+    integration_level = _LOGGER.getEffectiveLevel()
+    for logger_name in _DEPENDENCY_LOGGERS:
+        dependency_logger = logging.getLogger(logger_name)
+        if (
+            dependency_logger.level == logging.NOTSET
+            or dependency_logger.level > integration_level
+        ):
+            dependency_logger.setLevel(integration_level)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool:
     """Set up pvpc hourly pricing from a config entry."""
+    _sync_dependency_log_levels()
     entity_registry = er.async_get(hass)
     config = {**entry.data, **entry.options}
     api_token = config.get(CONF_API_TOKEN)
@@ -55,15 +79,40 @@ async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool
     holiday_source = normalize_holiday_source(
         config.get(ATTR_HOLIDAY_SOURCE, DEFAULT_HOLIDAY_SOURCE)
     )
+    next_price_in_update = config.get(
+        ATTR_NEXT_PRICE_IN_UPDATE, DEFAULT_UPDATE_FREQUENCY
+    )
+    next_best_in_update = config.get(
+        ATTR_NEXT_BEST_IN_UPDATE, DEFAULT_UPDATE_FREQUENCY
+    )
+    next_period_in_update = config.get(
+        ATTR_NEXT_PERIOD_IN_UPDATE, DEFAULT_UPDATE_FREQUENCY
+    )
+    next_power_period_in_update = config.get(
+        ATTR_NEXT_POWER_PERIOD_IN_UPDATE, DEFAULT_UPDATE_FREQUENCY
+    )
+    if next_price_in_update not in UPDATE_FREQUENCY_OPTIONS:
+        next_price_in_update = DEFAULT_UPDATE_FREQUENCY
+    if next_best_in_update not in UPDATE_FREQUENCY_OPTIONS:
+        next_best_in_update = DEFAULT_UPDATE_FREQUENCY
+    if next_period_in_update not in UPDATE_FREQUENCY_OPTIONS:
+        next_period_in_update = DEFAULT_UPDATE_FREQUENCY
+    if next_power_period_in_update not in UPDATE_FREQUENCY_OPTIONS:
+        next_power_period_in_update = DEFAULT_UPDATE_FREQUENCY
     sensor_keys = get_enabled_sensor_keys(
         using_private_api=use_private_api,
         entries=er.async_entries_for_config_entry(entity_registry, entry.entry_id),
         enable_private_api=enable_private_api,
     )
+    coordinator = ElecPricesDataUpdateCoordinator(
+        hass, entry, sensor_keys, use_private_api
+    )
     _LOGGER.debug(
         "PVPC Next config entry_id=%s unique_id=%s name=%s tariff=%s timezone=%s "
         "power_p1=%s power_p3=%s better_price_target=%s holiday_source=%s "
-        "enable_private_api=%s "
+        "enable_private_api=%s next_price_in_update=%s next_best_in_update=%s "
+        "next_period_in_update=%s next_power_period_in_update=%s "
+        "coordinator_update_interval=%s "
         "use_private_api=%s api_token_set=%s sensor_keys=%s entry_version=%s",
         entry.entry_id,
         entry.unique_id,
@@ -75,13 +124,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool
         better_price_target,
         holiday_source,
         enable_private_api,
+        next_price_in_update,
+        next_best_in_update,
+        next_period_in_update,
+        next_power_period_in_update,
+        coordinator.update_interval,
         use_private_api,
         bool(api_token),
         sorted(sensor_keys),
         entry.version,
-    )
-    coordinator = ElecPricesDataUpdateCoordinator(
-        hass, entry, sensor_keys, use_private_api
     )
     await coordinator.async_config_entry_first_refresh()
 
