@@ -33,6 +33,7 @@
           "next_best_in_update": "Aktualisierung für Next Best In",
           "next_period_in_update": "Aktualisierung für Next Period In",
           "next_power_period_in_update": "Aktualisierung für Next Power Period In",
+          "holiday_source": "Feiertagsquelle",
           "enable_private_api": "Abruf über API Token aktivieren (private API)"
         }
       }
@@ -57,6 +58,7 @@
           "next_best_in_update": "Aktualisierung für Next Best In",
           "next_period_in_update": "Aktualisierung für Next Period In",
           "next_power_period_in_update": "Aktualisierung für Next Power Period In",
+          "holiday_source": "Feiertagsquelle",
           "enable_private_api": "Abruf über API Token aktivieren (private API)"
         }
       }
@@ -88,6 +90,12 @@
         "disabled": "Deaktiviert",
         "hourly": "Stündlich",
         "minute": "Jede Minute"
+      }
+    },
+    "holiday_source": {
+      "options": {
+        "csv": "Direkt / CSV (seg-social.es)",
+        "python-holidays": "Holidays-Bibliothek"
       }
     }
   }

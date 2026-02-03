@@ -12,6 +12,7 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Calculated sensors for price levels (current, next and next best price).
 - Configurable Better Price Target (default: very cheap) to pick the next neutral/cheap/very cheap window; if none match, it falls back to the lowest available future price.
 - National holidays handled via a forked `aiopvpc` library that integrates the `holidays` dataset (no more hardcoded yearly tables).
+- Configurable holiday source for tariff-period holiday handling (`python-holidays` or `csv`).
 - General bugfixes, hardening, and stability improvements.
 
 ---
@@ -51,6 +52,9 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Contracted power (P1 and P3) is used to compute the Available Power sensor (in W).
 - Change Better Price Target via **Settings -> Devices & Integrations -> PVPC Next -> Configure**.
 - Update frequency for Next Price In, Next Best In, Next Period In, and Next Power Period In can be set to disabled/hourly/every minute in **Configure**; disabled will turn the entity off in the registry.
+- Holiday source can be set in **Configure**:
+  - `csv` (default in aiopvpc `PVPCData` and CLI).
+  - `python-holidays` (uses the Holidays python library).
 - If no target is found, Next Best sensors show Unknown; if price data is missing, they show Unavailable.
 - The old "PVPC" sensor is now "Current Price" and keeps the remaining attributes that are not exposed as separate sensors.
 - Private API usage is optional and disabled by default; it requires an ESIOS API token and can be enabled in **Configure** (enables Injection Price, MAG tax and OMIE Price sensors).

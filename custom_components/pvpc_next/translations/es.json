@@ -33,6 +33,7 @@
           "next_best_in_update": "Frecuencia de Next Best In",
           "next_period_in_update": "Frecuencia de Next Period In",
           "next_power_period_in_update": "Frecuencia de Next Power Period In",
+          "holiday_source": "Origen de festivos",
           "enable_private_api": "Activar obtención con token de API (API privada)"
         }
       }
@@ -57,6 +58,7 @@
           "next_best_in_update": "Frecuencia de Next Best In",
           "next_period_in_update": "Frecuencia de Next Period In",
           "next_power_period_in_update": "Frecuencia de Next Power Period In",
+          "holiday_source": "Origen de festivos",
           "enable_private_api": "Activar obtención con token de API (API privada)"
         }
       }
@@ -88,6 +90,12 @@
         "disabled": "Desactivado",
         "hourly": "Cada hora",
         "minute": "Cada minuto"
+      }
+    },
+    "holiday_source": {
+      "options": {
+        "csv": "Directo / CSV (seg-social.es)",
+        "python-holidays": "Biblioteca Holidays"
       }
     }
   }

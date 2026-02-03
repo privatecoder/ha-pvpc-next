@@ -17,13 +17,16 @@ from .const import (
     ATTR_POWER_P1,
     ATTR_POWER_P3,
     ATTR_BETTER_PRICE_TARGET,
+    ATTR_HOLIDAY_SOURCE,
     ATTR_TARIFF,
     DOMAIN,
     DEFAULT_BETTER_PRICE_TARGET,
+    DEFAULT_HOLIDAY_SOURCE,
     LEGACY_ATTR_POWER,
     LEGACY_ATTR_POWER_P2_P3,
     LEGACY_ATTR_POWER_P3,
     normalize_better_price_target,
+    normalize_holiday_source,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -60,6 +63,9 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
             power_p1 = DEFAULT_POWER_KW
         if power_p3 is None:
             power_p3 = DEFAULT_POWER_KW
+        holiday_source = normalize_holiday_source(
+            config.get(ATTR_HOLIDAY_SOURCE, DEFAULT_HOLIDAY_SOURCE)
+        )
         api_token = config.get(CONF_API_TOKEN) if use_private_api else None
 
         self.api = PVPCData(
@@ -69,6 +75,7 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
             power=power_p1,
             power_valley=power_p3,
             api_token=api_token,
+            holiday_source=holiday_source,
             sensor_keys=tuple(sensor_keys),
         )
         self._better_price_target = better_price_target

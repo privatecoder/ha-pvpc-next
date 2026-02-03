@@ -29,11 +29,13 @@ from .const import (
     DOMAIN,
     DEFAULT_NAME,
     DEFAULT_TARIFF,
+    DEFAULT_HOLIDAY_SOURCE,
     DEFAULT_UPDATE_FREQUENCY,
     ATTR_POWER_P1,
     ATTR_POWER_P3,
     ATTR_BETTER_PRICE_TARGET,
     ATTR_ENABLE_PRIVATE_API,
+    ATTR_HOLIDAY_SOURCE,
     ATTR_NEXT_BEST_IN_UPDATE,
     ATTR_NEXT_PERIOD_IN_UPDATE,
     ATTR_NEXT_POWER_PERIOD_IN_UPDATE,
@@ -45,9 +47,11 @@ from .const import (
     LEGACY_ATTR_POWER_P3,
     DEFAULT_BETTER_PRICE_TARGET,
     DEFAULT_ENABLE_PRIVATE_API,
+    HOLIDAY_SOURCES,
     UPDATE_FREQUENCY_OPTIONS,
     VALID_POWER,
     VALID_TARIFF,
+    normalize_holiday_source,
 )
 
 _MAIL_TO_LINK = (
@@ -66,6 +70,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
     _next_best_in_update: str | None = None
     _next_period_in_update: str | None = None
     _next_power_period_in_update: str | None = None
+    _holiday_source: str | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options."""
@@ -100,6 +105,12 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
         next_power_period_in_update = options.get(
             ATTR_NEXT_POWER_PERIOD_IN_UPDATE,
             data.get(ATTR_NEXT_POWER_PERIOD_IN_UPDATE, DEFAULT_UPDATE_FREQUENCY),
+        )
+        holiday_source = normalize_holiday_source(
+            options.get(
+                ATTR_HOLIDAY_SOURCE,
+                data.get(ATTR_HOLIDAY_SOURCE, DEFAULT_HOLIDAY_SOURCE),
+            )
         )
         api_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
         enable_private_api = options.get(ATTR_ENABLE_PRIVATE_API)
@@ -164,6 +175,13 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                         mode=SelectSelectorMode.DROPDOWN,
                     )
                 ),
+                vol.Required(ATTR_HOLIDAY_SOURCE, default=holiday_source): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(HOLIDAY_SOURCES),
+                        translation_key="holiday_source",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Required(ATTR_ENABLE_PRIVATE_API, default=enable_private_api): bool,
             }
         )
@@ -178,6 +196,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
             self._next_power_period_in_update = user_input[
                 ATTR_NEXT_POWER_PERIOD_IN_UPDATE
             ]
+            self._holiday_source = user_input[ATTR_HOLIDAY_SOURCE]
             self._enable_private_api = user_input[ATTR_ENABLE_PRIVATE_API]
             if self._enable_private_api:
                 existing_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
@@ -194,6 +213,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                             ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
                                 self._next_power_period_in_update
                             ),
+                            ATTR_HOLIDAY_SOURCE: self._holiday_source,
                             ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                             CONF_API_TOKEN: existing_token,
                         },
@@ -211,6 +231,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                     ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
                         self._next_power_period_in_update
                     ),
+                    ATTR_HOLIDAY_SOURCE: self._holiday_source,
                     ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: None,
                 },
@@ -234,6 +255,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                     ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
                         self._next_power_period_in_update
                     ),
+                    ATTR_HOLIDAY_SOURCE: self._holiday_source,
                     ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: api_token,
                 },
@@ -255,7 +277,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
 class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle config flow for PVPC Next."""
 
-    VERSION = 6
+    VERSION = 7
     _name: str | None = None
     _tariff: str | None = None
     _power_p1: float | None = None
@@ -266,6 +288,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
     _next_best_in_update: str | None = None
     _next_period_in_update: str | None = None
     _next_power_period_in_update: str | None = None
+    _holiday_source: str | None = None
     _api_token: str | None = None
     _api: PVPCData | None = None
 
@@ -292,6 +315,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             self._next_power_period_in_update = user_input[
                 ATTR_NEXT_POWER_PERIOD_IN_UPDATE
             ]
+            self._holiday_source = user_input[ATTR_HOLIDAY_SOURCE]
             self._enable_private_api = user_input[ATTR_ENABLE_PRIVATE_API]
 
             if self._enable_private_api:
@@ -310,6 +334,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                     ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
                         self._next_power_period_in_update
                     ),
+                    ATTR_HOLIDAY_SOURCE: self._holiday_source,
                     ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     CONF_API_TOKEN: None,
                 },
@@ -368,6 +393,15 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                     )
                 ),
                 vol.Required(
+                    ATTR_HOLIDAY_SOURCE, default=DEFAULT_HOLIDAY_SOURCE
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(HOLIDAY_SOURCES),
+                        translation_key="holiday_source",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
                     ATTR_ENABLE_PRIVATE_API,
                     default=DEFAULT_ENABLE_PRIVATE_API,
                 ): bool,
@@ -412,6 +446,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             ATTR_NEXT_BEST_IN_UPDATE: self._next_best_in_update,
             ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
             ATTR_NEXT_POWER_PERIOD_IN_UPDATE: self._next_power_period_in_update,
+            ATTR_HOLIDAY_SOURCE: normalize_holiday_source(self._holiday_source),
             ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
             CONF_API_TOKEN: self._api_token,
         }
@@ -437,6 +472,9 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
         self._better_price_target = entry_data.get(
             ATTR_BETTER_PRICE_TARGET, DEFAULT_BETTER_PRICE_TARGET
         )
+        self._holiday_source = entry_data.get(
+            ATTR_HOLIDAY_SOURCE, DEFAULT_HOLIDAY_SOURCE
+        )
         self._enable_private_api = entry_data.get(
             ATTR_ENABLE_PRIVATE_API,
             entry_data.get(
@@ -448,6 +486,8 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             self._power_p1 = DEFAULT_POWER_KW
         if self._power_p3 is None:
             self._power_p3 = DEFAULT_POWER_KW
+        if self._holiday_source not in HOLIDAY_SOURCES:
+            self._holiday_source = DEFAULT_HOLIDAY_SOURCE
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None):

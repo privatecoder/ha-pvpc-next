@@ -12,15 +12,18 @@ from .helpers import get_enabled_sensor_keys
 from .const import (
     ATTR_BETTER_PRICE_TARGET,
     ATTR_ENABLE_PRIVATE_API,
+    ATTR_HOLIDAY_SOURCE,
     ATTR_POWER_P1,
     ATTR_POWER_P3,
     ATTR_TARIFF,
+    DEFAULT_HOLIDAY_SOURCE,
     DEFAULT_UPDATE_FREQUENCY,
     DEFAULT_ENABLE_PRIVATE_API,
     LEGACY_ATTR_ENABLE_INJECTION_PRICE,
     LEGACY_ATTR_POWER,
     LEGACY_ATTR_POWER_P2_P3,
     LEGACY_ATTR_POWER_P3,
+    normalize_holiday_source,
     UPDATE_FREQUENCY_BY_SENSOR,
     UPDATE_FREQUENCY_OPTIONS,
 )
@@ -49,6 +52,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool
         config.get(LEGACY_ATTR_POWER_P2_P3, config.get(LEGACY_ATTR_POWER_P3)),
     )
     better_price_target = config.get(ATTR_BETTER_PRICE_TARGET)
+    holiday_source = normalize_holiday_source(
+        config.get(ATTR_HOLIDAY_SOURCE, DEFAULT_HOLIDAY_SOURCE)
+    )
     sensor_keys = get_enabled_sensor_keys(
         using_private_api=use_private_api,
         entries=er.async_entries_for_config_entry(entity_registry, entry.entry_id),
@@ -56,7 +62,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool
     )
     _LOGGER.debug(
         "PVPC Next config entry_id=%s unique_id=%s name=%s tariff=%s timezone=%s "
-        "power_p1=%s power_p3=%s better_price_target=%s enable_private_api=%s "
+        "power_p1=%s power_p3=%s better_price_target=%s holiday_source=%s "
+        "enable_private_api=%s "
         "use_private_api=%s api_token_set=%s sensor_keys=%s entry_version=%s",
         entry.entry_id,
         entry.unique_id,
@@ -66,6 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool
         power_p1,
         power_p3,
         better_price_target,
+        holiday_source,
         enable_private_api,
         use_private_api,
         bool(api_token),
@@ -132,7 +140,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> boo
 
 async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bool:
     """Migrate old config entries to the current schema."""
-    if entry.version >= 6:
+    if entry.version >= 7:
         return True
 
     data = {**entry.data}
@@ -169,6 +177,17 @@ async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bo
                 ]
             store.pop(LEGACY_ATTR_ENABLE_INJECTION_PRICE, None)
             migrated = True
+
+        if ATTR_HOLIDAY_SOURCE in store:
+            holiday_source = store.get(ATTR_HOLIDAY_SOURCE)
+            normalized_holiday_source = normalize_holiday_source(holiday_source)
+            if holiday_source != normalized_holiday_source:
+                store[ATTR_HOLIDAY_SOURCE] = normalized_holiday_source
+                migrated = True
+
+    if ATTR_HOLIDAY_SOURCE not in options and ATTR_HOLIDAY_SOURCE not in data:
+        data[ATTR_HOLIDAY_SOURCE] = DEFAULT_HOLIDAY_SOURCE
+        migrated = True
     unique_id = entry.unique_id
     updated_unique_id = TARIFF_ALIASES.get(unique_id, unique_id)
     if updated_unique_id != unique_id:
@@ -212,6 +231,6 @@ async def async_migrate_entry(hass: HomeAssistant, entry: PVPCConfigEntry) -> bo
         data=data if migrated else None,
         options=options if migrated else None,
         unique_id=updated_unique_id if updated_unique_id != unique_id else None,
-        version=6,
+        version=7,
     )
     return True
