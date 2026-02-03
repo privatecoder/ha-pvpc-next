@@ -1,0 +1,96 @@
+"""Tests for PVPC Next config and options flows."""
+
+from homeassistant.config_entries import SOURCE_USER
+from homeassistant.const import CONF_NAME
+from homeassistant.data_entry_flow import FlowResultType
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.pvpc_next.const import (
+    ATTR_BETTER_PRICE_TARGET,
+    ATTR_ENABLE_PRIVATE_API,
+    ATTR_HOLIDAY_SOURCE,
+    ATTR_NEXT_BEST_IN_UPDATE,
+    ATTR_NEXT_PERIOD_IN_UPDATE,
+    ATTR_NEXT_POWER_PERIOD_IN_UPDATE,
+    ATTR_NEXT_PRICE_IN_UPDATE,
+    ATTR_POWER_P1,
+    ATTR_POWER_P3,
+    ATTR_TARIFF,
+    DEFAULT_BETTER_PRICE_TARGET,
+    DEFAULT_HOLIDAY_SOURCE,
+    DEFAULT_TARIFF,
+    DEFAULT_UPDATE_FREQUENCY,
+    DOMAIN,
+)
+
+
+async def test_user_flow_persists_holiday_source(hass):
+    """User flow stores selected holiday source in config entry data."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["type"] == FlowResultType.FORM
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_NAME: "PVPC Test",
+            ATTR_TARIFF: DEFAULT_TARIFF,
+            ATTR_POWER_P1: 4.4,
+            ATTR_POWER_P3: 3.3,
+            ATTR_BETTER_PRICE_TARGET: DEFAULT_BETTER_PRICE_TARGET,
+            ATTR_NEXT_PRICE_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_BEST_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_PERIOD_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_POWER_PERIOD_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_HOLIDAY_SOURCE: "csv",
+            ATTR_ENABLE_PRIVATE_API: False,
+        },
+    )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"][ATTR_HOLIDAY_SOURCE] == "csv"
+
+
+async def test_options_flow_persists_holiday_source(hass):
+    """Options flow stores selected holiday source in options data."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="PVPC Test",
+        unique_id=DEFAULT_TARIFF,
+        data={
+            CONF_NAME: "PVPC Test",
+            ATTR_TARIFF: DEFAULT_TARIFF,
+            ATTR_POWER_P1: 4.4,
+            ATTR_POWER_P3: 3.3,
+            ATTR_BETTER_PRICE_TARGET: DEFAULT_BETTER_PRICE_TARGET,
+            ATTR_NEXT_PRICE_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_BEST_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_PERIOD_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_POWER_PERIOD_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_HOLIDAY_SOURCE: DEFAULT_HOLIDAY_SOURCE,
+            ATTR_ENABLE_PRIVATE_API: False,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == FlowResultType.FORM
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={
+            ATTR_POWER_P1: 5.0,
+            ATTR_POWER_P3: 4.0,
+            ATTR_BETTER_PRICE_TARGET: DEFAULT_BETTER_PRICE_TARGET,
+            ATTR_NEXT_PRICE_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_BEST_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_PERIOD_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_POWER_PERIOD_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_HOLIDAY_SOURCE: "csv",
+            ATTR_ENABLE_PRIVATE_API: False,
+        },
+    )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"][ATTR_HOLIDAY_SOURCE] == "csv"
