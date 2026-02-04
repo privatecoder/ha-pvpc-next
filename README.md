@@ -9,10 +9,10 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 ## What's new vs the integrated version
 
 - New PVPC sensors that expose key attributes as standalone entities (e.g., tariff, current/next period, hours to next period, min/max price, price levels, better prices ahead, and time to better price).
-- Calculated sensors for price levels (current, next and next best price).
+- Calculated sensors for price levels (current, next and next best price), based on each day's min/max PVPC range (`price_ratio` buckets).
+- Average Price Today sensor for daily price tracking.
 - Configurable Better Price Target (default: very cheap) to pick the next neutral/cheap/very cheap window; if none match, it falls back to the lowest available future price.
-- National holidays handled via a forked `aiopvpc` library that integrates the `holidays` dataset (no more hardcoded yearly tables).
-- Configurable holiday source for tariff-period holiday handling (`python-holidays` or `csv`).
+- National holidays handled via a forked `aiopvpc` library that uses `spanish-pvpc-holidays` (source-selectable via `python-holidays` or direct `csv` from seg-social.es; no hardcoded yearly tables).
 - General bugfixes, hardening, and stability improvements.
 
 ---
@@ -23,6 +23,7 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Sensors for current price and detailed price attributes.
 - Current Price Level, Next Best Level, and Next Price Level sensors.
 - Next Best Price, Next Best In, Next Price, and Next Price In sensors.
+- Average Price Today sensor for daily price tracking.
 - Configurable Better Price Target for the Next Best sensors (default: very cheap, with a fallback to the lowest available future price if no target match).
 - Tariff selection by geographic zone and contracted power (P1 and P3).
 - Diagnostic sensors for API source and data IDs (PVPC, and optional private API data IDs).
