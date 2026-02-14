@@ -19,15 +19,18 @@ from .const import (
     ATTR_POWER_P3,
     ATTR_BETTER_PRICE_TARGET,
     ATTR_HOLIDAY_SOURCE,
+    ATTR_PRICE_MODE,
     ATTR_TARIFF,
     DOMAIN,
     DEFAULT_BETTER_PRICE_TARGET,
     DEFAULT_HOLIDAY_SOURCE,
+    DEFAULT_PRICE_MODE,
     LEGACY_ATTR_POWER,
     LEGACY_ATTR_POWER_P2_P3,
     LEGACY_ATTR_POWER_P3,
     normalize_better_price_target,
     normalize_holiday_source,
+    normalize_price_mode,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -67,8 +70,22 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
         holiday_source = normalize_holiday_source(
             config.get(ATTR_HOLIDAY_SOURCE, DEFAULT_HOLIDAY_SOURCE)
         )
+        configured_price_mode = normalize_price_mode(
+            config.get(ATTR_PRICE_MODE, DEFAULT_PRICE_MODE)
+        )
+        effective_price_mode = (
+            configured_price_mode
+            if configured_price_mode != "indexed" or use_private_api
+            else "pvpc"
+        )
         api_token = config.get(CONF_API_TOKEN) if use_private_api else None
         self._holiday_source = holiday_source
+        self._configured_price_mode = configured_price_mode
+        self._price_mode = effective_price_mode
+        if configured_price_mode == "indexed" and not use_private_api:
+            _LOGGER.warning(
+                "Indexed mode requested but private API is disabled; falling back to PVPC mode"
+            )
 
         self.api = PVPCData(
             session=async_get_clientsession(hass),
@@ -103,6 +120,16 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
     def holiday_source(self) -> str:
         """Return configured holiday source."""
         return self._holiday_source
+
+    @property
+    def price_mode(self) -> str:
+        """Return effective price mode."""
+        return self._price_mode
+
+    @property
+    def configured_price_mode(self) -> str:
+        """Return configured price mode."""
+        return self._configured_price_mode
 
     async def _async_update_data(self) -> EsiosApiData:
         """Update electricity prices from the ESIOS API."""

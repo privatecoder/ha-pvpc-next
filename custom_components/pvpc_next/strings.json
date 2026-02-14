@@ -5,7 +5,8 @@
       "reauth_successful": "Re-authentication successful."
     },
     "error": {
-      "invalid_auth": "Invalid authentication."
+      "invalid_auth": "Invalid authentication.",
+      "indexed_requires_private_api": "Indexed mode requires private API and a valid API token."
     },
     "step": {
       "api_token": {
@@ -15,6 +16,14 @@
         "description": "To use the extended API you must request a personal token by mailing to {mail_to_link}.",
         "title": "ESIOS API token"
       },
+      "price_mode": {
+        "data": {
+          "price_mode": "Price mode",
+          "show_reference_price": "Show Reference Price"
+        },
+        "description": "Select which series should be used as Current Price.",
+        "title": "Price mode"
+      },
       "reauth_confirm": {
         "data": {
           "api_token": "API Token",
@@ -22,7 +31,7 @@
         }
       },
       "user": {
-        "description": "PVPC works without a token (public API). If you have a token, enable the checkbox below (private API), which also allows fetching injection price, day-ahead wholesale price (OMIE), and the regulated gas adjustment (MAG tax).",
+        "description": "ha-pvpc-next works without a token (public API). If you have a token, enable the checkbox below (private API), which also allows using indexed price mode and fetching injection price, day-ahead wholesale price (OMIE), and the regulated gas adjustment (MAG tax).",
         "data": {
           "name": "Sensor Name",
           "power_p1": "P1 (punta) (kW)",
@@ -49,7 +58,7 @@
         "title": "ESIOS API token"
       },
       "init": {
-        "description": "PVPC works without a token (public API). If you have a token, enable the checkbox below (private API), which also allows fetching injection price, day-ahead wholesale price (OMIE), and the regulated gas adjustment (MAG tax).",
+        "description": "ha-pvpc-next works without a token (public API). If you have a token, enable the checkbox below (private API), which also allows using indexed price mode and fetching injection price, day-ahead wholesale price (OMIE), and the regulated gas adjustment (MAG tax).",
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p3": "P3 (llano) (kW)",
@@ -61,6 +70,14 @@
           "holiday_source": "Holiday source",
           "enable_private_api": "Enable API token fetching (private API)"
         }
+      },
+      "price_mode": {
+        "data": {
+          "price_mode": "Price mode",
+          "show_reference_price": "Show Reference Price"
+        },
+        "description": "Select which series should be used as Current Price.",
+        "title": "Price mode"
       }
     }
   },
@@ -96,6 +113,12 @@
       "options": {
         "csv": "Direct / CSV (seg-social.es)",
         "python-holidays": "Holidays library"
+      }
+    },
+    "price_mode": {
+      "options": {
+        "pvpc": "PVPC",
+        "indexed": "Indexed"
       }
     }
   }

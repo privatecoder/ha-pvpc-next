@@ -4,6 +4,8 @@ from homeassistant.helpers.entity_registry import RegistryEntry
 
 from aiopvpc.const import (
     ALL_SENSORS,
+    KEY_ADJUSTMENT,
+    KEY_INDEXED,
     KEY_INJECTION,
     KEY_MAG,
     KEY_OMIE,
@@ -12,6 +14,7 @@ from aiopvpc.const import (
     TARIFFS,
 )
 
+_KEY_REFERENCE_PVPC = "PVPC_REFERENCE"
 _TARIFF_IDS = (*TARIFFS, *LEGACY_TARIFFS)
 _ha_uniqueid_to_sensor_key = {
     **{tariff: KEY_PVPC for tariff in _TARIFF_IDS},
@@ -19,6 +22,8 @@ _ha_uniqueid_to_sensor_key = {
     **{f"{tariff}_INYECTION": KEY_INJECTION for tariff in _TARIFF_IDS},
     **{f"{tariff}_{KEY_MAG}": KEY_MAG for tariff in _TARIFF_IDS},
     **{f"{tariff}_{KEY_OMIE}": KEY_OMIE for tariff in _TARIFF_IDS},
+    **{f"{tariff}_{KEY_INDEXED}": KEY_ADJUSTMENT for tariff in _TARIFF_IDS},
+    **{f"{tariff}_{_KEY_REFERENCE_PVPC}": KEY_PVPC for tariff in _TARIFF_IDS},
 }
 
 
@@ -42,6 +47,9 @@ def get_enabled_sensor_keys(
                 seen_injection = True
                 if not enable_private_api:
                     continue
+            if sensor_key == KEY_ADJUSTMENT:
+                # Indexed prices require both ADJUSTMENT and PVPC source series.
+                sensor_keys.add(KEY_PVPC)
             if sensor_key is not None:
                 sensor_keys.add(sensor_key)
         if enable_private_api and not seen_injection:
@@ -56,7 +64,7 @@ def get_enabled_sensor_keys(
 
 def make_sensor_unique_id(config_entry_id: str | None, sensor_key: str) -> str:
     """Generate unique_id for each sensor kind and config entry."""
-    assert sensor_key in ALL_SENSORS
+    assert sensor_key in ALL_SENSORS or sensor_key in {KEY_INDEXED, _KEY_REFERENCE_PVPC}
     assert config_entry_id is not None
     if sensor_key == KEY_PVPC:
         # for old compatibility

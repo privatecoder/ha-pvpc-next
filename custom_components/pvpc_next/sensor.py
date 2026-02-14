@@ -31,6 +31,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
 from aiopvpc.const import (
+    KEY_ADJUSTMENT,
+    KEY_INDEXED,
     KEY_INJECTION,
     KEY_MAG,
     KEY_OMIE,
@@ -45,8 +47,10 @@ from aiopvpc.pvpc_tariff import (
 from aiopvpc.utils import ensure_utc_time
 from .const import (
     ATTR_ENABLE_PRIVATE_API,
+    ATTR_SHOW_REFERENCE_PRICE,
     DEFAULT_UPDATE_FREQUENCY,
     DEFAULT_ENABLE_PRIVATE_API,
+    DEFAULT_SHOW_REFERENCE_PRICE,
     LEGACY_ATTR_ENABLE_INJECTION_PRICE,
     DOMAIN,
     normalize_better_price_target,
@@ -71,6 +75,7 @@ _PRICE_LEVEL_TARGET_MAX = {
     "neutral": 0.6,
 }
 _DEBUG_LAST_UPDATE: dict[str, datetime] = {}
+_KEY_REFERENCE_PVPC = "PVPC_REFERENCE"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -488,6 +493,10 @@ def _api_source_label(coordinator: ElecPricesDataUpdateCoordinator) -> str:
     return "private" if coordinator.api.using_private_api else "public"
 
 
+def _price_mode_label(coordinator: ElecPricesDataUpdateCoordinator) -> str:
+    return coordinator.price_mode
+
+
 def _log_debug_once_per_update(
     coordinator: ElecPricesDataUpdateCoordinator,
     key: str,
@@ -542,6 +551,25 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         entity_registry_enabled_default=False,
     ),
 )
+
+REFERENCE_PRICE_SENSORS: dict[str, SensorEntityDescription] = {
+    "pvpc": SensorEntityDescription(
+        key=KEY_INDEXED,
+        icon="mdi:chart-line",
+        native_unit_of_measurement=_PRICE_UNIT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=5,
+        name="Current Indexed Price",
+    ),
+    "indexed": SensorEntityDescription(
+        key=_KEY_REFERENCE_PVPC,
+        icon="mdi:currency-eur",
+        native_unit_of_measurement=_PRICE_UNIT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=5,
+        name="Current PVPC",
+    ),
+}
 # pylint: disable=unexpected-keyword-arg
 ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
     PVPCAttributeSensorDescription(
@@ -556,6 +584,13 @@ ATTRIBUTE_SENSOR_TYPES: tuple[PVPCAttributeSensorDescription, ...] = (
         name="API Source",
         value_fn=_api_source_label,
         icon="mdi:api",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    PVPCAttributeSensorDescription(
+        key="pvpc_price_mode",
+        name="Price Mode",
+        value_fn=_price_mode_label,
+        icon="mdi:tune-variant",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     PVPCAttributeSensorDescription(
@@ -836,6 +871,9 @@ async def async_setup_entry(
         enable_private_api = (
             bool(api_token) if api_token else DEFAULT_ENABLE_PRIVATE_API
         )
+    show_reference_price = config.get(
+        ATTR_SHOW_REFERENCE_PRICE, DEFAULT_SHOW_REFERENCE_PRICE
+    )
     sensors = [ElecPriceSensor(coordinator, SENSOR_TYPES[0], entry_unique_id)]
     unique_id = entry_unique_id
     for sensor_desc in ATTRIBUTE_SENSOR_TYPES:
@@ -853,6 +891,10 @@ async def async_setup_entry(
         extra_sensors = []
         if enable_private_api:
             extra_sensors.extend(SENSOR_TYPES[1:])
+            if show_reference_price:
+                reference_sensor = REFERENCE_PRICE_SENSORS.get(coordinator.price_mode)
+                if reference_sensor is not None:
+                    extra_sensors.append(reference_sensor)
         sensors.extend(
             ElecPriceSensor(coordinator, sensor_desc, entry_unique_id)
             for sensor_desc in extra_sensors
@@ -887,20 +929,46 @@ class ElecPriceSensor(CoordinatorEntity[ElecPricesDataUpdateCoordinator], Sensor
     @property
     def available(self) -> bool:
         """Return if entity is available."""
+        sensor_key = self._effective_sensor_key
         return self.coordinator.data.availability.get(
-            self.entity_description.key, False
+            sensor_key, False
         )
+
+    @property
+    def _effective_sensor_key(self) -> str:
+        """Return key used to read state/attributes for this entity."""
+        if self.entity_description.key == _KEY_REFERENCE_PVPC:
+            return KEY_PVPC
+        if (
+            self.entity_description.key == KEY_PVPC
+            and self.coordinator.price_mode == "indexed"
+        ):
+            return KEY_INDEXED
+        return self.entity_description.key
 
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
         await super().async_added_to_hass()
-        # Enable API downloads for this sensor
-        self.coordinator.api.update_active_sensors(self.entity_description.key, True)
-        self.async_on_remove(
-            lambda: self.coordinator.api.update_active_sensors(
-                self.entity_description.key, False
+        sensor_key = self._effective_sensor_key
+        if sensor_key == KEY_INDEXED:
+            # INDEXED is a composed series (PVPC - ADJUSTMENT); request ADJUSTMENT data.
+            self.coordinator.api.update_active_sensors(KEY_ADJUSTMENT, True)
+            self.async_on_remove(
+                lambda: self.coordinator.api.update_active_sensors(
+                    KEY_ADJUSTMENT, False
+                )
             )
-        )
+            self.hass.async_create_task(self.coordinator.async_request_refresh())
+        else:
+            # Enable API downloads for this sensor
+            self.coordinator.api.update_active_sensors(
+                sensor_key, True
+            )
+            self.async_on_remove(
+                lambda: self.coordinator.api.update_active_sensors(
+                    sensor_key, False
+                )
+            )
 
         # Update 'state' value in hour changes
         self.async_on_remove(
@@ -918,27 +986,32 @@ class ElecPriceSensor(CoordinatorEntity[ElecPricesDataUpdateCoordinator], Sensor
     @callback
     def update_current_price(self, now: datetime) -> None:
         """Update the sensor state, by selecting the current price for this hour."""
+        sensor_key = self._effective_sensor_key
         self.coordinator.api.process_state_and_attributes(
-            self.coordinator.data, self.entity_description.key, now
+            self.coordinator.data, sensor_key, now
         )
         self.async_write_ha_state()
 
     @property
     def native_value(self) -> StateType:
         """Return the state of the sensor."""
-        return self.coordinator.api.states.get(self.entity_description.key)
+        return self.coordinator.api.states.get(self._effective_sensor_key)
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
         """Return the state attributes."""
+        sensor_key = self._effective_sensor_key
         sensor_attributes = self.coordinator.api.sensor_attributes.get(
-            self.entity_description.key, {}
+            sensor_key, {}
         )
-        return {
+        attributes = {
             _PRICE_SENSOR_ATTRIBUTES_MAP[key]: value
             for key, value in sensor_attributes.items()
             if key in _PRICE_SENSOR_ATTRIBUTES_MAP
         }
+        if self.entity_description.key == KEY_PVPC:
+            attributes["mode"] = self.coordinator.price_mode
+        return attributes
 
 
 class PVPCAttributeSensor(CoordinatorEntity[ElecPricesDataUpdateCoordinator], SensorEntity):

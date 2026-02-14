@@ -25,6 +25,8 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Next Best Price, Next Best In, Next Price, and Next Price In sensors.
 - Average Price Today sensor for daily price tracking.
 - Configurable Better Price Target for the Next Best sensors (default: very cheap, with a fallback to the lowest available future price if no target match).
+- Configurable Price Mode for Current Price: `pvpc` (default) or `indexed` (indexed mode requires private API + token).
+- Optional Reference Price sensor: shows `Current Indexed Price` in PVPC mode, or `Current PVPC` in Indexed mode.
 - Tariff selection by geographic zone and contracted power (P1 and P3).
 - Diagnostic sensors for API source and data IDs (PVPC, and optional private API data IDs).
 - Works with automations and energy dashboards.
@@ -34,9 +36,9 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 
 ## Sensors
 
-- Price sensors: Current Price; private API adds Injection Price, MAG tax, and OMIE Price (MAG tax and OMIE Price are disabled by default).
+- Price sensors: Current Price; private API adds Injection Price, optional mode-dependent Reference Price (`Current Indexed Price` or `Current PVPC`), MAG tax, and OMIE Price (MAG tax and OMIE Price are disabled by default).
 - Attribute sensors: Tariff, Current Period, Current Power Period, Next Power Period, Next Power Period In, Next Period, Next Period In, Available Power, Min Price, Max Price, Avg. Price Today, Next Best Price, Next Price, Next Price In, Next Best In, Better Prices Ahead, Current Price Level, Next Price Level, Next Best Level.
-- Diagnostic sensors: PVPC Data ID, API Source; private API adds Injection Price Data ID, MAG Tax Data ID, and OMIE Price Data ID (MAG/OMIE data IDs are disabled by default).
+- Diagnostic sensors: PVPC Data ID, API Source, Price Mode; private API adds Injection Price Data ID, MAG Tax Data ID, and OMIE Price Data ID (MAG/OMIE data IDs are disabled by default).
 
 ---
 
@@ -52,13 +54,15 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Tariff selection controls the geographic zone (Península/Baleares/Canarias vs Ceuta/Melilla).
 - Contracted power (P1 and P3) is used to compute the Available Power sensor (in W).
 - Change Better Price Target via **Settings -> Devices & Integrations -> PVPC Next -> Configure**.
+- Change Current Price mode via **Settings -> Devices & Integrations -> PVPC Next -> Configure** (`indexed` is available only with private API enabled and API token configured).
+- Toggle the optional **Show Reference Price** setting in **Configure** to expose the mode-dependent reference sensor.
 - Update frequency for Next Price In, Next Best In, Next Period In, and Next Power Period In can be set to disabled/hourly/every minute in **Configure**; disabled will turn the entity off in the registry.
 - Holiday source can be set in **Configure**:
   - `csv` (default in aiopvpc `PVPCData` and CLI).
   - `python-holidays` (uses the Holidays python library).
 - If no target is found, Next Best sensors show Unknown; if price data is missing, they show Unavailable.
 - The old "PVPC" sensor is now "Current Price" and keeps the remaining attributes that are not exposed as separate sensors.
-- Private API usage is optional and disabled by default; it requires an ESIOS API token and can be enabled in **Configure** (enables Injection Price, MAG tax and OMIE Price sensors).
+- Private API usage is optional and disabled by default; it requires an ESIOS API token and can be enabled in **Configure** (enables Injection Price, optional Reference Price, MAG tax and OMIE Price sensors).
 - Recorder exclusions are configured in `configuration.yaml` (not from the integration), for example:
 
 ```yaml

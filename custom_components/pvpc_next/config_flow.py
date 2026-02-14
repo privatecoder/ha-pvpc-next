@@ -35,6 +35,8 @@ from .const import (
     ATTR_POWER_P3,
     ATTR_BETTER_PRICE_TARGET,
     ATTR_ENABLE_PRIVATE_API,
+    ATTR_PRICE_MODE,
+    ATTR_SHOW_REFERENCE_PRICE,
     ATTR_HOLIDAY_SOURCE,
     ATTR_NEXT_BEST_IN_UPDATE,
     ATTR_NEXT_PERIOD_IN_UPDATE,
@@ -47,16 +49,27 @@ from .const import (
     LEGACY_ATTR_POWER_P3,
     DEFAULT_BETTER_PRICE_TARGET,
     DEFAULT_ENABLE_PRIVATE_API,
+    DEFAULT_PRICE_MODE,
+    DEFAULT_SHOW_REFERENCE_PRICE,
     HOLIDAY_SOURCES,
+    PRICE_MODES,
     UPDATE_FREQUENCY_OPTIONS,
     VALID_POWER,
     VALID_TARIFF,
     normalize_holiday_source,
+    normalize_price_mode,
 )
 
 _MAIL_TO_LINK = (
     "[consultasios@ree.es](mailto:consultasios@ree.es?subject=Personal%20token%20request)"
 )
+
+
+def _available_price_modes(enable_private_api: bool, api_token: str | None) -> list[str]:
+    """Return selectable price modes for current auth settings."""
+    if enable_private_api and api_token:
+        return list(PRICE_MODES)
+    return [DEFAULT_PRICE_MODE]
 
 
 class PVPCOptionsFlowHandler(OptionsFlowWithReload):
@@ -66,11 +79,14 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
     _power_p3: float | None = None
     _better_price_target: str | None = None
     _enable_private_api: bool | None = None
+    _price_mode: str | None = None
+    _show_reference_price: bool | None = None
     _next_price_in_update: str | None = None
     _next_best_in_update: str | None = None
     _next_period_in_update: str | None = None
     _next_power_period_in_update: str | None = None
     _holiday_source: str | None = None
+    _api_token: str | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options."""
@@ -111,6 +127,10 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                 ATTR_HOLIDAY_SOURCE,
                 data.get(ATTR_HOLIDAY_SOURCE, DEFAULT_HOLIDAY_SOURCE),
             )
+        )
+        show_reference_price = options.get(
+            ATTR_SHOW_REFERENCE_PRICE,
+            data.get(ATTR_SHOW_REFERENCE_PRICE, DEFAULT_SHOW_REFERENCE_PRICE),
         )
         api_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
         enable_private_api = options.get(ATTR_ENABLE_PRIVATE_API)
@@ -198,27 +218,13 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
             ]
             self._holiday_source = user_input[ATTR_HOLIDAY_SOURCE]
             self._enable_private_api = user_input[ATTR_ENABLE_PRIVATE_API]
+            self._show_reference_price = bool(show_reference_price)
             if self._enable_private_api:
-                existing_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
-                if existing_token:
-                    return self.async_create_entry(
-                        title="",
-                        data={
-                            ATTR_POWER_P1: self._power_p1,
-                            ATTR_POWER_P3: self._power_p3,
-                            ATTR_BETTER_PRICE_TARGET: self._better_price_target,
-                            ATTR_NEXT_PRICE_IN_UPDATE: self._next_price_in_update,
-                            ATTR_NEXT_BEST_IN_UPDATE: self._next_best_in_update,
-                            ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
-                            ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
-                                self._next_power_period_in_update
-                            ),
-                            ATTR_HOLIDAY_SOURCE: self._holiday_source,
-                            ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
-                            CONF_API_TOKEN: existing_token,
-                        },
-                    )
+                self._api_token = options.get(CONF_API_TOKEN, data.get(CONF_API_TOKEN))
+                if self._api_token:
+                    return await self.async_step_price_mode()
                 return await self.async_step_api_token(user_input)
+            self._price_mode = DEFAULT_PRICE_MODE
             return self.async_create_entry(
                 title="",
                 data={
@@ -233,6 +239,8 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                     ),
                     ATTR_HOLIDAY_SOURCE: self._holiday_source,
                     ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
+                    ATTR_PRICE_MODE: self._price_mode,
+                    ATTR_SHOW_REFERENCE_PRICE: bool(self._show_reference_price),
                     CONF_API_TOKEN: None,
                 },
             )
@@ -243,25 +251,10 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
         """Handle optional API token step for extra sensors."""
         api_token = user_input.get(CONF_API_TOKEN) if user_input else None
         if user_input is not None and api_token:
-            return self.async_create_entry(
-                title="",
-                data={
-                    ATTR_POWER_P1: self._power_p1,
-                    ATTR_POWER_P3: self._power_p3,
-                    ATTR_BETTER_PRICE_TARGET: self._better_price_target,
-                    ATTR_NEXT_PRICE_IN_UPDATE: self._next_price_in_update,
-                    ATTR_NEXT_BEST_IN_UPDATE: self._next_best_in_update,
-                    ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
-                    ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
-                        self._next_power_period_in_update
-                    ),
-                    ATTR_HOLIDAY_SOURCE: self._holiday_source,
-                    ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
-                    CONF_API_TOKEN: api_token,
-                },
-            )
+            self._api_token = api_token
+            return await self.async_step_price_mode()
 
-        default_token = self.config_entry.options.get(
+        default_token = self._api_token or self.config_entry.options.get(
             CONF_API_TOKEN, self.config_entry.data.get(CONF_API_TOKEN)
         )
 
@@ -272,6 +265,74 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
             data_schema=schema,
             description_placeholders={"mail_to_link": _MAIL_TO_LINK},
         )
+
+    async def async_step_price_mode(self, user_input: dict[str, Any] | None = None):
+        """Select price mode after private API credentials are available."""
+        options = self.config_entry.options
+        data = self.config_entry.data
+        selectable_price_modes = _available_price_modes(
+            bool(self._enable_private_api), self._api_token
+        )
+        default_mode = normalize_price_mode(
+            self._price_mode
+            or options.get(ATTR_PRICE_MODE, data.get(ATTR_PRICE_MODE, DEFAULT_PRICE_MODE))
+        )
+        default_show_reference_price = (
+            bool(self._show_reference_price)
+            if self._show_reference_price is not None
+            else bool(
+                options.get(
+                    ATTR_SHOW_REFERENCE_PRICE,
+                    data.get(ATTR_SHOW_REFERENCE_PRICE, DEFAULT_SHOW_REFERENCE_PRICE),
+                )
+            )
+        )
+        if default_mode not in selectable_price_modes:
+            default_mode = DEFAULT_PRICE_MODE
+        schema = vol.Schema(
+            {
+                vol.Required(ATTR_PRICE_MODE, default=default_mode): SelectSelector(
+                    SelectSelectorConfig(
+                        options=selectable_price_modes,
+                        translation_key="price_mode",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    ATTR_SHOW_REFERENCE_PRICE, default=default_show_reference_price
+                ): bool,
+            }
+        )
+
+        if user_input is not None:
+            selected_mode = normalize_price_mode(user_input[ATTR_PRICE_MODE])
+            if selected_mode not in selectable_price_modes:
+                return self.async_show_form(
+                    step_id="price_mode",
+                    data_schema=schema,
+                    errors={"base": "indexed_requires_private_api"},
+                )
+            self._price_mode = selected_mode
+            self._show_reference_price = bool(user_input[ATTR_SHOW_REFERENCE_PRICE])
+            return self.async_create_entry(
+                title="",
+                data={
+                    ATTR_POWER_P1: self._power_p1,
+                    ATTR_POWER_P3: self._power_p3,
+                    ATTR_BETTER_PRICE_TARGET: self._better_price_target,
+                    ATTR_NEXT_PRICE_IN_UPDATE: self._next_price_in_update,
+                    ATTR_NEXT_BEST_IN_UPDATE: self._next_best_in_update,
+                    ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
+                    ATTR_NEXT_POWER_PERIOD_IN_UPDATE: self._next_power_period_in_update,
+                    ATTR_HOLIDAY_SOURCE: self._holiday_source,
+                    ATTR_ENABLE_PRIVATE_API: bool(self._enable_private_api),
+                    ATTR_PRICE_MODE: self._price_mode,
+                    ATTR_SHOW_REFERENCE_PRICE: bool(self._show_reference_price),
+                    CONF_API_TOKEN: self._api_token,
+                },
+            )
+
+        return self.async_show_form(step_id="price_mode", data_schema=schema)
 
 
 class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -284,6 +345,8 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
     _power_p3: float | None = None
     _better_price_target: str | None = None
     _enable_private_api: bool | None = None
+    _price_mode: str | None = None
+    _show_reference_price: bool | None = None
     _next_price_in_update: str | None = None
     _next_best_in_update: str | None = None
     _next_period_in_update: str | None = None
@@ -308,46 +371,6 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         """Initial configuration step."""
-        if user_input is not None:
-            await self.async_set_unique_id(user_input[ATTR_TARIFF])
-            self._abort_if_unique_id_configured()
-
-            self._name = user_input[CONF_NAME]
-            self._tariff = user_input[ATTR_TARIFF]
-            self._power_p1 = user_input[ATTR_POWER_P1]
-            self._power_p3 = user_input[ATTR_POWER_P3]
-            self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
-            self._next_price_in_update = user_input[ATTR_NEXT_PRICE_IN_UPDATE]
-            self._next_best_in_update = user_input[ATTR_NEXT_BEST_IN_UPDATE]
-            self._next_period_in_update = user_input[ATTR_NEXT_PERIOD_IN_UPDATE]
-            self._next_power_period_in_update = user_input[
-                ATTR_NEXT_POWER_PERIOD_IN_UPDATE
-            ]
-            self._holiday_source = user_input[ATTR_HOLIDAY_SOURCE]
-            self._enable_private_api = user_input[ATTR_ENABLE_PRIVATE_API]
-
-            if self._enable_private_api:
-                return await self.async_step_api_token()
-            return self.async_create_entry(
-                title=self._name,
-                data={
-                    CONF_NAME: self._name,
-                    ATTR_TARIFF: self._tariff,
-                    ATTR_POWER_P1: self._power_p1,
-                    ATTR_POWER_P3: self._power_p3,
-                    ATTR_BETTER_PRICE_TARGET: self._better_price_target,
-                    ATTR_NEXT_PRICE_IN_UPDATE: self._next_price_in_update,
-                    ATTR_NEXT_BEST_IN_UPDATE: self._next_best_in_update,
-                    ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
-                    ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
-                        self._next_power_period_in_update
-                    ),
-                    ATTR_HOLIDAY_SOURCE: self._holiday_source,
-                    ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
-                    CONF_API_TOKEN: None,
-                },
-            )
-
         data_schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
@@ -415,6 +438,50 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                 ): bool,
             }
         )
+
+        if user_input is not None:
+            await self.async_set_unique_id(user_input[ATTR_TARIFF])
+            self._abort_if_unique_id_configured()
+
+            self._name = user_input[CONF_NAME]
+            self._tariff = user_input[ATTR_TARIFF]
+            self._power_p1 = user_input[ATTR_POWER_P1]
+            self._power_p3 = user_input[ATTR_POWER_P3]
+            self._better_price_target = user_input[ATTR_BETTER_PRICE_TARGET]
+            self._next_price_in_update = user_input[ATTR_NEXT_PRICE_IN_UPDATE]
+            self._next_best_in_update = user_input[ATTR_NEXT_BEST_IN_UPDATE]
+            self._next_period_in_update = user_input[ATTR_NEXT_PERIOD_IN_UPDATE]
+            self._next_power_period_in_update = user_input[
+                ATTR_NEXT_POWER_PERIOD_IN_UPDATE
+            ]
+            self._holiday_source = user_input[ATTR_HOLIDAY_SOURCE]
+            self._enable_private_api = user_input[ATTR_ENABLE_PRIVATE_API]
+            if self._enable_private_api:
+                return await self.async_step_api_token()
+            self._price_mode = DEFAULT_PRICE_MODE
+            self._show_reference_price = DEFAULT_SHOW_REFERENCE_PRICE
+            return self.async_create_entry(
+                title=self._name,
+                data={
+                    CONF_NAME: self._name,
+                    ATTR_TARIFF: self._tariff,
+                    ATTR_POWER_P1: self._power_p1,
+                    ATTR_POWER_P3: self._power_p3,
+                    ATTR_BETTER_PRICE_TARGET: self._better_price_target,
+                    ATTR_NEXT_PRICE_IN_UPDATE: self._next_price_in_update,
+                    ATTR_NEXT_BEST_IN_UPDATE: self._next_best_in_update,
+                    ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
+                    ATTR_NEXT_POWER_PERIOD_IN_UPDATE: (
+                        self._next_power_period_in_update
+                    ),
+                    ATTR_HOLIDAY_SOURCE: self._holiday_source,
+                    ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
+                    ATTR_PRICE_MODE: DEFAULT_PRICE_MODE,
+                    ATTR_SHOW_REFERENCE_PRICE: self._show_reference_price,
+                    CONF_API_TOKEN: None,
+                },
+            )
+
         return self.async_show_form(step_id="user", data_schema=data_schema)
 
     async def async_step_api_token(self, user_input: dict[str, Any] | None = None):
@@ -444,7 +511,62 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             errors["base"] = "invalid_auth"
             return self.async_show_form(step_id=step_id, errors=errors)
 
-        data = {
+        if self.source == SOURCE_REAUTH:
+            return self.async_update_reload_and_abort(
+                None, data=self._build_entry_data()
+            )
+
+        return await self.async_step_price_mode()
+
+    async def async_step_price_mode(self, user_input: dict[str, Any] | None = None):
+        """Select price mode after private API credentials are available."""
+        selectable_price_modes = _available_price_modes(
+            bool(self._enable_private_api), self._api_token
+        )
+        default_mode = normalize_price_mode(self._price_mode)
+        default_show_reference_price = (
+            bool(self._show_reference_price)
+            if self._show_reference_price is not None
+            else DEFAULT_SHOW_REFERENCE_PRICE
+        )
+        if default_mode not in selectable_price_modes:
+            default_mode = DEFAULT_PRICE_MODE
+        schema = vol.Schema(
+            {
+                vol.Required(ATTR_PRICE_MODE, default=default_mode): SelectSelector(
+                    SelectSelectorConfig(
+                        options=selectable_price_modes,
+                        translation_key="price_mode",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    ATTR_SHOW_REFERENCE_PRICE, default=default_show_reference_price
+                ): bool,
+            }
+        )
+
+        if user_input is not None:
+            selected_mode = normalize_price_mode(user_input[ATTR_PRICE_MODE])
+            if selected_mode not in selectable_price_modes:
+                return self.async_show_form(
+                    step_id="price_mode",
+                    data_schema=schema,
+                    errors={"base": "indexed_requires_private_api"},
+                )
+            self._price_mode = selected_mode
+            self._show_reference_price = bool(user_input[ATTR_SHOW_REFERENCE_PRICE])
+            assert self._name is not None
+            return self.async_create_entry(
+                title=self._name,
+                data=self._build_entry_data(),
+            )
+
+        return self.async_show_form(step_id="price_mode", data_schema=schema)
+
+    def _build_entry_data(self) -> dict[str, Any]:
+        """Build normalized entry data payload."""
+        return {
             CONF_NAME: self._name,
             ATTR_TARIFF: self._tariff,
             ATTR_POWER_P1: self._power_p1,
@@ -455,15 +577,11 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             ATTR_NEXT_PERIOD_IN_UPDATE: self._next_period_in_update,
             ATTR_NEXT_POWER_PERIOD_IN_UPDATE: self._next_power_period_in_update,
             ATTR_HOLIDAY_SOURCE: normalize_holiday_source(self._holiday_source),
-            ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
+            ATTR_ENABLE_PRIVATE_API: bool(self._enable_private_api),
+            ATTR_PRICE_MODE: normalize_price_mode(self._price_mode),
+            ATTR_SHOW_REFERENCE_PRICE: bool(self._show_reference_price),
             CONF_API_TOKEN: self._api_token,
         }
-
-        if self.source == SOURCE_REAUTH:
-            return self.async_update_reload_and_abort(None, data=data)
-
-        assert self._name is not None
-        return self.async_create_entry(title=self._name, data=data)
 
     async def async_step_reauth(self, entry_data: Mapping[str, Any]):
         """Re-authentication step."""
@@ -482,6 +600,12 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         self._holiday_source = entry_data.get(
             ATTR_HOLIDAY_SOURCE, DEFAULT_HOLIDAY_SOURCE
+        )
+        self._price_mode = normalize_price_mode(
+            entry_data.get(ATTR_PRICE_MODE, DEFAULT_PRICE_MODE)
+        )
+        self._show_reference_price = entry_data.get(
+            ATTR_SHOW_REFERENCE_PRICE, DEFAULT_SHOW_REFERENCE_PRICE
         )
         self._enable_private_api = entry_data.get(
             ATTR_ENABLE_PRIVATE_API,

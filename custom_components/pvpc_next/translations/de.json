@@ -5,7 +5,8 @@
       "reauth_successful": "Erneute Authentifizierung erfolgreich."
     },
     "error": {
-      "invalid_auth": "Ungültige Authentifizierung."
+      "invalid_auth": "Ungültige Authentifizierung.",
+      "indexed_requires_private_api": "Der Indexmodus erfordert eine private API und einen gültigen API-Token."
     },
     "step": {
       "api_token": {
@@ -15,6 +16,14 @@
         "description": "Um die erweiterte API zu nutzen, musst du einen persönlichen Token per E-Mail an {mail_to_link} anfordern.",
         "title": "ESIOS-API-Token"
       },
+      "price_mode": {
+        "data": {
+          "price_mode": "Preismodus",
+          "show_reference_price": "Referenzpreis anzeigen"
+        },
+        "description": "Wähle, welche Preisreihe als aktueller Preis verwendet werden soll.",
+        "title": "Preismodus"
+      },
       "reauth_confirm": {
         "data": {
           "api_token": "API Token",
@@ -22,7 +31,7 @@
         }
       },
       "user": {
-        "description": "PVPC funktioniert auch ohne Token (public API). Falls du einen Token hast, aktiviere die Checkbox unten (private API), womit auch Einspeisepreis, Großhandels-Day-Ahead-Preis (OMIE) und gesetzlicher Gas-Ausgleich (MAG tax) abgerufen werden können.",
+        "description": "ha-pvpc-next funktioniert auch ohne Token (public API). Falls du einen Token hast, aktiviere die Checkbox unten (private API), womit auch der Index-Preis-Modus genutzt sowie Einspeisepreis, Großhandels-Day-Ahead-Preis (OMIE) und gesetzlicher Gas-Ausgleich (MAG tax) abgerufen werden können.",
         "data": {
           "name": "Sensorname",
           "power_p1": "P1 (punta) (kW)",
@@ -49,7 +58,7 @@
         "title": "ESIOS-API-Token"
       },
       "init": {
-        "description": "PVPC funktioniert auch ohne Token (public API). Falls du einen Token hast, aktiviere die Checkbox unten (private API), womit auch Einspeisepreis, Großhandels-Day-Ahead-Preis (OMIE) und gesetzlicher Gas-Ausgleich (MAG tax) abgerufen werden können.",
+        "description": "ha-pvpc-next funktioniert auch ohne Token (public API). Falls du einen Token hast, aktiviere die Checkbox unten (private API), womit auch der Index-Preis-Modus genutzt sowie Einspeisepreis, Großhandels-Day-Ahead-Preis (OMIE) und gesetzlicher Gas-Ausgleich (MAG tax) abgerufen werden können.",
         "data": {
           "power_p1": "P1 (punta) (kW)",
           "power_p3": "P3 (llano) (kW)",
@@ -61,6 +70,14 @@
           "holiday_source": "Feiertagsquelle",
           "enable_private_api": "Abruf über API Token aktivieren (private API)"
         }
+      },
+      "price_mode": {
+        "data": {
+          "price_mode": "Preismodus",
+          "show_reference_price": "Referenzpreis anzeigen"
+        },
+        "description": "Wähle, welche Preisreihe als aktueller Preis verwendet werden soll.",
+        "title": "Preismodus"
       }
     }
   },
@@ -96,6 +113,12 @@
       "options": {
         "csv": "Direkt / CSV (seg-social.es)",
         "python-holidays": "Holidays-Bibliothek"
+      }
+    },
+    "price_mode": {
+      "options": {
+        "pvpc": "PVPC",
+        "indexed": "Indexiert"
       }
     }
   }
