@@ -4,6 +4,11 @@
 
 - No unreleased changes yet.
 
+## 2.2.1
+
+- 🐛 Fix partial data on first load with API token: when the config flow token validation triggers ESIOS rate-limiting, the first coordinator refresh now retries failed sensors after a short delay (bundled `aiopvpc` v5.0.1).
+- 🐛 Diagnostic sensors (API Source, Price Mode, Data IDs) are now available independently of PVPC price data availability.
+
 ## 2.2.0
 
 - Vendor `aiopvpc` and `pvpc_holidays` directly into the custom component to avoid conflicts with the built-in `pvpc_hourly_pricing` integration that pins a different `aiopvpc` version from PyPI.

@@ -266,6 +266,7 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
         local_ref_now = utc_now.astimezone(REFERENCE_TZ)
         next_day = local_ref_now + timedelta(days=1)
 
+        is_first_load = current_data is None
         if current_data is None:
             current_data = EsiosApiData(
                 sensors={},
@@ -309,6 +310,37 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
                 updated = True
                 current_data.sensors[sensor_key] = new_data
                 current_data.availability[sensor_key] = True
+
+        # Retry failed sensors on first load (e.g. rate-limited after token check)
+        if is_first_load and updated:
+            failed = [
+                i
+                for i in range(len(api_sensors))
+                if not results[i]
+            ]
+            if failed:
+                _LOGGER.debug(
+                    "First load: retrying %d failed sensor(s) %s",
+                    len(failed),
+                    [api_sensors[i] for i in failed],
+                )
+                await asyncio.sleep(3)
+                retry_tasks = [
+                    self._update_prices_series(
+                        api_sensors[i],
+                        current_data.sensors.get(api_sensors[i], {}),
+                        urls_now[i],
+                        urls_next[i],
+                        local_ref_now,
+                    )
+                    for i in failed
+                ]
+                retry_results = await asyncio.gather(*retry_tasks)
+                for new_data, idx in zip(retry_results, failed):
+                    if new_data:
+                        updated = True
+                        current_data.sensors[api_sensors[idx]] = new_data
+                        current_data.availability[api_sensors[idx]] = True
 
         if updated:
             current_data.data_source = self._data_source

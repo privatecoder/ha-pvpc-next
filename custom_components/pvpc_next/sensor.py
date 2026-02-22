@@ -1040,6 +1040,8 @@ class PVPCAttributeSensor(CoordinatorEntity[ElecPricesDataUpdateCoordinator], Se
     @property
     def available(self) -> bool:
         """Return if entity is available."""
+        if self.entity_description.entity_category == EntityCategory.DIAGNOSTIC:
+            return self.coordinator.last_update_success
         return self.coordinator.data.availability.get(KEY_PVPC, False)
 
     async def async_added_to_hass(self) -> None:
