@@ -3,7 +3,7 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from aiopvpc.const import KEY_INDEXED, KEY_PVPC
+from custom_components.pvpc_next.aiopvpc.const import KEY_INDEXED, KEY_PVPC
 from homeassistant.const import CONF_API_TOKEN, CONF_NAME
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 

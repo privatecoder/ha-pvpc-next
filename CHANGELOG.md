@@ -4,6 +4,12 @@
 
 - No unreleased changes yet.
 
+## 2.2.0
+
+- Vendor `aiopvpc` and `pvpc_holidays` directly into the custom component to avoid conflicts with the built-in `pvpc_hourly_pricing` integration that pins a different `aiopvpc` version from PyPI.
+- Remove git-based `aiopvpc` requirement from `manifest.json`; only `holidays>=0.89` is needed now.
+- Update dependency logger names to match vendored module paths.
+
 ## 2.1.0
 
 - Add configurable price mode (`pvpc` or `indexed`) with safe defaults for existing configurations.

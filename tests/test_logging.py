@@ -8,8 +8,8 @@ from custom_components.pvpc_next import _sync_dependency_log_levels
 def test_sync_dependency_log_levels_propagates_debug() -> None:
     """Debug on integration should enable dependency debug logs."""
     integration_logger = logging.getLogger("custom_components.pvpc_next")
-    aiopvpc_logger = logging.getLogger("aiopvpc")
-    pvpc_holidays_logger = logging.getLogger("pvpc_holidays")
+    aiopvpc_logger = logging.getLogger("custom_components.pvpc_next.aiopvpc")
+    pvpc_holidays_logger = logging.getLogger("custom_components.pvpc_next.pvpc_holidays")
     original_levels = (
         integration_logger.level,
         aiopvpc_logger.level,
@@ -34,7 +34,7 @@ def test_sync_dependency_log_levels_propagates_debug() -> None:
 def test_sync_dependency_log_levels_keeps_more_verbose_dependency_level() -> None:
     """Do not reduce explicit dependency debug level."""
     integration_logger = logging.getLogger("custom_components.pvpc_next")
-    aiopvpc_logger = logging.getLogger("aiopvpc")
+    aiopvpc_logger = logging.getLogger("custom_components.pvpc_next.aiopvpc")
     original_levels = (integration_logger.level, aiopvpc_logger.level)
 
     try:

@@ -2,7 +2,7 @@
 
 from unittest.mock import AsyncMock, patch
 
-from aiopvpc.const import KEY_ADJUSTMENT, KEY_INDEXED
+from custom_components.pvpc_next.aiopvpc.const import KEY_ADJUSTMENT, KEY_INDEXED
 from homeassistant.const import CONF_API_TOKEN, CONF_NAME
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import logging
 from unittest.mock import patch
 
-from aiopvpc.const import EsiosApiData
+from custom_components.pvpc_next.aiopvpc.const import EsiosApiData
 from homeassistant.const import CONF_NAME
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 

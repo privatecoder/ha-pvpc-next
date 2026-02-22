@@ -6,7 +6,7 @@ from homeassistant.const import CONF_API_TOKEN, CONF_NAME, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from aiopvpc.const import KEY_ADJUSTMENT, TARIFF_ALIASES, normalize_tariff
+from .aiopvpc.const import KEY_ADJUSTMENT, TARIFF_ALIASES, normalize_tariff
 from .coordinator import ElecPricesDataUpdateCoordinator, PVPCConfigEntry
 from .helpers import get_enabled_sensor_keys
 from .const import (
@@ -39,11 +39,9 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 _DEPENDENCY_LOGGERS: tuple[str, ...] = (
-    "aiopvpc",
-    "pvpc_holidays",
-    "pvpc_holidays.core",
-    "pvpc_holidays.csv_source",
-    "pvpc_holidays.holidays_source",
+    "custom_components.pvpc_next.aiopvpc",
+    "custom_components.pvpc_next.pvpc_holidays",
+    "custom_components.pvpc_next.pvpc_holidays.core",
 )
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
