@@ -392,7 +392,8 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
         local_ref_now: datetime,
     ) -> dict[datetime, float] | None:
         current_num_prices = len(current_prices)
-        if local_ref_now.hour >= 20 and current_num_prices > 30:
+        evening = (local_ref_now.hour, local_ref_now.minute) >= (20, 20)
+        if evening and current_num_prices > 30:
             # already have today+tomorrow prices, avoid requests
             _LOGGER.debug(
                 "[%s] Evening download avoided, now with %d prices from %s UTC",
@@ -402,7 +403,7 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
             )
             return None
         if (
-            local_ref_now.hour < 20 < current_num_prices
+            not evening and 20 < current_num_prices
             and (
                 list(current_prices)[-12].astimezone(REFERENCE_TZ).date()
                 == local_ref_now.date()
@@ -447,8 +448,8 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
             prices = prices_response.series[sensor_key]
             current_prices.update(prices)
 
-        # At evening, it is possible to retrieve next day prices
-        if local_ref_now.hour >= 20:
+        # At evening (after 20:20), it is possible to retrieve next day prices
+        if evening:
             prices_fut_response = await self._download_daily_data(sensor_key, url_next)
             if prices_fut_response is None:
                 _LOGGER.debug("[%s] No response for %s", sensor_key, url_next)
