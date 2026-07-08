@@ -9,7 +9,10 @@ https://www.home-assistant.io/integrations/pvpc_hourly_pricing/
 from __future__ import annotations
 
 import asyncio
+import io
+import json
 import logging
+import zipfile
 from collections import deque
 from datetime import datetime, timedelta
 from random import random
@@ -141,7 +144,35 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
         assert self._session is not None
         async with self._session.get(url, headers=headers) as resp:
             if resp.status < 400:
-                data = await resp.json()
+                # Read raw bytes: ESIOS transiently serves bad Content-Type
+                # headers (e.g. `json`) and may wrap the daily file in a ZIP,
+                # so don't rely on aiohttp's strict content-type check.
+                raw = await resp.read()
+                if raw[:4] == b"PK\x03\x04":
+                    try:
+                        with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+                            names = zf.namelist()
+                            member = next(
+                                (n for n in names if n.upper().startswith("PVPC")),
+                                names[0],
+                            )
+                            raw = zf.read(member)
+                    except (zipfile.BadZipFile, IndexError):
+                        _LOGGER.warning(
+                            "[%s] Corrupt ZIP payload from '%s'", sensor_key, url
+                        )
+                        return None
+                try:
+                    data = json.loads(raw)
+                except ValueError:
+                    _LOGGER.warning(
+                        "[%s] Non-JSON payload from '%s' (%d bytes, content-type=%s)",
+                        sensor_key,
+                        url,
+                        len(raw),
+                        resp.content_type,
+                    )
+                    return None
                 return extract_esios_data(
                     data, url, sensor_key, self.tariff, tz=self._local_timezone
                 )
