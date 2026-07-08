@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+import aiohttp
 import voluptuous as vol
 
 from homeassistant.config_entries import (
@@ -505,7 +506,15 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
         if self._api_token:
             if not self._api:
                 self._api = PVPCData(session=async_get_clientsession(self.hass))
-            auth_ok = await self._api.check_api_token(dt_util.utcnow(), self._api_token)
+            try:
+                auth_ok = await self._api.check_api_token(
+                    dt_util.utcnow(), self._api_token
+                )
+            except (aiohttp.ClientError, TimeoutError):
+                # transient failure: the API could not be reached,
+                # which says nothing about the token being valid
+                errors["base"] = "cannot_connect"
+                return self.async_show_form(step_id=step_id, errors=errors)
 
         if not auth_ok:
             errors["base"] = "invalid_auth"

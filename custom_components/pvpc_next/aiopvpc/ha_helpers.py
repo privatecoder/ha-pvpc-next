@@ -1,5 +1,4 @@
 """Home Assistant helper methods."""
-# pylint: disable=duplicate-code
 
 from .const import (
     ALL_SENSORS,
@@ -15,7 +14,7 @@ from .const import (
 
 _TARIFF_IDS = (*TARIFFS, *LEGACY_TARIFFS)
 _ha_uniqueid_to_sensor_key = {
-    **{tariff: KEY_PVPC for tariff in _TARIFF_IDS},
+    **dict.fromkeys(_TARIFF_IDS, KEY_PVPC),
     **{f"{tariff}_{KEY_INJECTION}": KEY_INJECTION for tariff in _TARIFF_IDS},
     **{f"{tariff}_INYECTION": KEY_INJECTION for tariff in _TARIFF_IDS},
     **{f"{tariff}_{KEY_MAG}": KEY_MAG for tariff in _TARIFF_IDS},
@@ -40,7 +39,8 @@ def get_enabled_sensor_keys(
 
 def make_sensor_unique_id(config_entry_id: str, sensor_key: str) -> str:
     """(HA) Generate unique_id for each sensor kind and config entry."""
-    assert sensor_key in ALL_SENSORS or sensor_key == KEY_INDEXED
+    if sensor_key not in ALL_SENSORS and sensor_key != KEY_INDEXED:
+        raise ValueError(f"Unknown sensor key: {sensor_key}")
     if sensor_key == KEY_PVPC:
         # for old compatibility
         return config_entry_id

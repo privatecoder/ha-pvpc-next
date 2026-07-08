@@ -1,11 +1,15 @@
 """ESIOS API handler for HomeAssistant. PVPC tariff periods."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 from functools import lru_cache
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
 
 from ..pvpc_holidays import get_pvpc_holidays
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 HolidaySource = Literal["csv", "python-holidays"]
 DEFAULT_HOLIDAY_SOURCE: HolidaySource = "csv"
@@ -62,21 +66,31 @@ def _power_period_key(
     return "P1"
 
 
+def _walk_until_change(
+    key_fn: Callable[[datetime, bool, HolidaySource], str],
+    local_ts: datetime,
+    zone_ceuta_melilla: bool,
+    holiday_source: HolidaySource,
+) -> tuple[str, str, timedelta]:
+    """Advance one hour at a time until the period key changes."""
+    current_period = key_fn(local_ts, zone_ceuta_melilla, holiday_source)
+    delta = timedelta(hours=1)
+    while (
+        next_period := key_fn(local_ts + delta, zone_ceuta_melilla, holiday_source)
+    ) == current_period:
+        delta += timedelta(hours=1)
+    return current_period, next_period, delta
+
+
 def get_current_and_next_price_periods(
     local_ts: datetime,
     zone_ceuta_melilla: bool,
     holiday_source: HolidaySource = DEFAULT_HOLIDAY_SOURCE,
 ) -> tuple[str, str, timedelta]:
     """Get price periods for PVPC 2.0TD."""
-    current_period = _price_period_key(local_ts, zone_ceuta_melilla, holiday_source)
-    delta = timedelta(hours=1)
-    while (
-        next_period := _price_period_key(
-            local_ts + delta, zone_ceuta_melilla, holiday_source
-        )
-    ) == current_period:
-        delta += timedelta(hours=1)
-    return current_period, next_period, delta
+    return _walk_until_change(
+        _price_period_key, local_ts, zone_ceuta_melilla, holiday_source
+    )
 
 
 def get_current_and_next_power_periods(
@@ -85,15 +99,9 @@ def get_current_and_next_power_periods(
     holiday_source: HolidaySource = DEFAULT_HOLIDAY_SOURCE,
 ) -> tuple[str, str, timedelta]:
     """Get power periods for PVPC 2.0TD."""
-    current_period = _power_period_key(local_ts, zone_ceuta_melilla, holiday_source)
-    delta = timedelta(hours=1)
-    while (
-        next_period := _power_period_key(
-            local_ts + delta, zone_ceuta_melilla, holiday_source
-        )
-    ) == current_period:
-        delta += timedelta(hours=1)
-    return current_period, next_period, delta
+    return _walk_until_change(
+        _power_period_key, local_ts, zone_ceuta_melilla, holiday_source
+    )
 
 
 def get_current_and_next_tariff_periods(

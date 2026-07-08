@@ -5,14 +5,18 @@ from contextlib import suppress
 from datetime import datetime
 from typing import Any
 
-from .const import EsiosApiData, KEY_ADJUSTMENT, KEY_INDEXED, KEY_INJECTION, KEY_PVPC
+from .const import (
+    EsiosApiData,
+    KEY_ADJUSTMENT,
+    KEY_INDEXED,
+    KEY_INJECTION,
+    KEY_PVPC,
+    PRICE_PRECISION,
+)
 
 
 def _is_tomorrow_price(ts: datetime, ref: datetime) -> bool:
-    return any(
-        ts_comp > ts_tz_ref
-        for ts_comp, ts_tz_ref in zip(ts.isocalendar(), ref.isocalendar())
-    )
+    return ts.date() > ref.date()
 
 
 def _split_today_tomorrow_prices(
@@ -45,7 +49,7 @@ def _make_price_tag_attributes(
     return attributes
 
 
-def _make_price_stats_attributes(  # pylint: disable=too-many-locals
+def _make_price_stats_attributes(
     sensor_key: str,
     current_price: float,
     current_prices: dict[datetime, float],
@@ -119,7 +123,7 @@ def make_price_sensor_attributes(
     return {**price_attrs, **price_tags}
 
 
-def add_composed_price_sensors(data: EsiosApiData):
+def add_composed_price_sensors(data: EsiosApiData) -> None:
     """Calculate price sensors derived from multiple data series."""
     if (
         data.availability.get(KEY_PVPC, False)
@@ -134,7 +138,7 @@ def add_composed_price_sensors(data: EsiosApiData):
         pvpc = data.sensors[KEY_PVPC]
         adjustment = data.sensors[KEY_ADJUSTMENT]
         data.sensors[KEY_INDEXED] = {
-            ts_hour: round(pvpc[ts_hour] - adjustment[ts_hour], 5)
+            ts_hour: round(pvpc[ts_hour] - adjustment[ts_hour], PRICE_PRECISION)
             for ts_hour in sorted(common_ts_prices)
         }
         data.availability[KEY_INDEXED] = True

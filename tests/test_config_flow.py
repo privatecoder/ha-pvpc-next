@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+import aiohttp
+import pytest
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_API_TOKEN, CONF_NAME
 from homeassistant.data_entry_flow import FlowResultType
@@ -209,3 +211,60 @@ async def test_user_flow_private_api_token_enables_indexed_mode_step(hass):
     assert result["data"][ATTR_ENABLE_PRIVATE_API] is True
     assert result["data"][ATTR_PRICE_MODE] == "indexed"
     assert result["data"][ATTR_SHOW_REFERENCE_PRICE] is True
+
+
+@pytest.mark.parametrize("raised_exc", [aiohttp.ClientError, TimeoutError])
+async def test_user_flow_api_token_transient_error_shows_cannot_connect(
+    hass, raised_exc
+):
+    """Transient API failures re-show the token form with cannot_connect."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["type"] == FlowResultType.FORM
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_NAME: "PVPC Test",
+            ATTR_TARIFF: DEFAULT_TARIFF,
+            ATTR_POWER_P1: 4.4,
+            ATTR_POWER_P3: 3.3,
+            ATTR_BETTER_PRICE_TARGET: DEFAULT_BETTER_PRICE_TARGET,
+            ATTR_NEXT_PRICE_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_BEST_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_PERIOD_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_NEXT_POWER_PERIOD_IN_UPDATE: DEFAULT_UPDATE_FREQUENCY,
+            ATTR_HOLIDAY_SOURCE: "csv",
+            ATTR_ENABLE_PRIVATE_API: True,
+        },
+    )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "api_token"
+
+    with patch(
+        "custom_components.pvpc_next.config_flow.PVPCData.check_api_token",
+        side_effect=raised_exc,
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_API_TOKEN: "token"},
+        )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "api_token"
+    assert result["errors"] == {"base": "cannot_connect"}
+
+    # the flow recovers once the API is reachable again
+    with patch(
+        "custom_components.pvpc_next.config_flow.PVPCData.check_api_token",
+        return_value=True,
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_API_TOKEN: "token"},
+        )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "price_mode"

@@ -2,10 +2,8 @@
 
 import zoneinfo
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from typing import Literal
-
-DATE_CHANGE_TO_20TD = date(2021, 6, 1)
 
 # Tariffs as internal keys in esios API data
 TARIFF_20TD_IDS = ["PCB", "CYM"]
@@ -35,7 +33,20 @@ DEFAULT_TIMEOUT = 10
 PRICE_PRECISION = 5
 
 DataSource = Literal["esios_public", "esios"]
-GEOZONES = ["Península", "Canarias", "Baleares", "Ceuta", "Melilla", "España"]
+GEOZONE_PENINSULA = "Península"
+GEOZONE_CANARIAS = "Canarias"
+GEOZONE_BALEARES = "Baleares"
+GEOZONE_CEUTA = "Ceuta"
+GEOZONE_MELILLA = "Melilla"
+GEOZONE_ESPANA = "España"
+GEOZONES = [
+    GEOZONE_PENINSULA,
+    GEOZONE_CANARIAS,
+    GEOZONE_BALEARES,
+    GEOZONE_CEUTA,
+    GEOZONE_MELILLA,
+    GEOZONE_ESPANA,
+]
 GEOZONE_ID2NAME: dict[int, str] = {
     3: "España",
     8741: "Península",
@@ -45,8 +56,7 @@ GEOZONE_ID2NAME: dict[int, str] = {
     8745: "Melilla",
 }
 URL_PUBLIC_PVPC_RESOURCE = (
-    "https://api.esios.ree.es/archives/70/download_json"
-    "?locale=es&date={day:%Y-%m-%d}"
+    "https://api.esios.ree.es/archives/70/download_json?locale=es&date={day:%Y-%m-%d}"
 )
 URL_ESIOS_TOKEN_RESOURCE = (
     "https://api.esios.ree.es/indicators/{ind}"
@@ -81,22 +91,15 @@ SENSOR_KEY_TO_DATAID = {
     KEY_OMIE: ESIOS_OMIE,
     KEY_ADJUSTMENT: ESIOS_MARKET_ADJUSTMENT,
 }
-SENSOR_KEY_TO_NAME = {
-    KEY_PVPC: "PVPC T. 2.0TD",
-    KEY_INJECTION: "Precio de la energía excedentaria",
-    KEY_MAG: "2.0TD Excedente o déficit ajuste liquidación",
-    KEY_OMIE: "Precio medio horario final suma",
-    KEY_ADJUSTMENT: "Ajuste de mercado a plazo",
-    KEY_INDEXED: "Precio tarifa Indexada",
-}
-# API indicator dependencies for each price sensor
+# API indicator dependencies for each price sensor.
+# KEY_INDEXED is derived-only (PVPC - ADJUSTMENT) via add_composed_price_sensors
+# and is never requested from the API directly.
 SENSOR_KEY_TO_API_SERIES = {
     KEY_PVPC: [KEY_PVPC],
     KEY_INJECTION: [KEY_INJECTION],
     KEY_MAG: [KEY_MAG],
     KEY_OMIE: [KEY_OMIE],
     KEY_ADJUSTMENT: [KEY_ADJUSTMENT],
-    KEY_INDEXED: [KEY_PVPC, KEY_ADJUSTMENT],
 }
 
 

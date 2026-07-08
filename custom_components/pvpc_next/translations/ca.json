@@ -6,6 +6,7 @@
     },
     "error": {
       "invalid_auth": "Autenticació no vàlida.",
+      "cannot_connect": "Error de connexió: no s'ha pogut accedir a l'API d'ESIOS.",
       "indexed_requires_private_api": "El mode indexat requereix API privada i un token vàlid."
     },
     "step": {

@@ -6,6 +6,7 @@
     },
     "error": {
       "invalid_auth": "Ungültige Authentifizierung.",
+      "cannot_connect": "Verbindung fehlgeschlagen: Die ESIOS-API ist nicht erreichbar.",
       "indexed_requires_private_api": "Der Indexmodus erfordert eine private API und einen gültigen API-Token."
     },
     "step": {

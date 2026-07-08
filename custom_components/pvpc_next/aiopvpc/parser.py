@@ -14,8 +14,10 @@ from typing import Any
 from .const import (
     DataSource,
     EsiosResponse,
+    GEOZONE_CANARIAS,
+    GEOZONE_CEUTA,
     GEOZONE_ID2NAME,
-    GEOZONES,
+    GEOZONE_PENINSULA,
     KEY_PVPC,
     PRICE_PRECISION,
     REFERENCE_TZ,
@@ -39,10 +41,11 @@ def extract_prices_from_esios_public(
     data: dict[str, Any], key: str, tz: zoneinfo.ZoneInfo = REFERENCE_TZ
 ) -> EsiosResponse:
     """Parse the contents of a daily PVPC json file."""
-    ts_init = datetime(
-        *datetime.strptime(data["PVPC"][0]["Dia"], "%d/%m/%Y").timetuple()[:3],
-        tzinfo=tz,
-    ).astimezone(UTC_TZ)
+    ts_init = (
+        datetime.strptime(data["PVPC"][0]["Dia"], "%d/%m/%Y")
+        .replace(tzinfo=tz)
+        .astimezone(UTC_TZ)
+    )
 
     def _parse_tariff_val(value, prec=PRICE_PRECISION) -> float:
         return round(float(value.replace(",", ".")) / 1000.0, prec)
@@ -55,7 +58,7 @@ def extract_prices_from_esios_public(
     return EsiosResponse(
         name="PVPC ESIOS",
         data_id="legacy",
-        last_update=datetime.utcnow().replace(microsecond=0, tzinfo=UTC_TZ),
+        last_update=datetime.now(UTC_TZ).replace(microsecond=0),
         unit="€/kWh",
         series={KEY_PVPC: pvpc_prices},
     )
@@ -73,24 +76,28 @@ def extract_prices_from_esios_token(
     unit = "•".join(mag["name"] for mag in indicator_data["magnitud"])
     unit_tiempo = "•".join(mag["name"] for mag in indicator_data["tiempo"])
     unit += f"/{unit_tiempo}"
-    ts_update = datetime.utcnow().replace(microsecond=0, tzinfo=UTC_TZ)
+    ts_update = datetime.now(UTC_TZ).replace(microsecond=0)
 
     def _parse_dt(ts: str) -> datetime:
         return datetime.fromisoformat(ts).astimezone(UTC_TZ) + offset_timezone
 
     def _value_unit_conversion(value: float) -> float:
         # from €/MWh to €/kWh
-        return round(float(value) / 1000.0, 5)
+        return round(float(value) / 1000.0, PRICE_PRECISION)
 
     value_gen = groupby(
         sorted(indicator_data["values"], key=itemgetter("geo_id")),
         itemgetter("geo_id"),
     )
+    # sort each series by timestamp: downstream consumers rely on
+    # chronological iteration order of the price dicts
     parsed_data = {
-        GEOZONE_ID2NAME[key]: {
-            _parse_dt(item["datetime"]): _value_unit_conversion(item["value"])
-            for item in list(group)
-        }
+        GEOZONE_ID2NAME[key]: dict(
+            sorted(
+                (_parse_dt(item["datetime"]), _value_unit_conversion(item["value"]))
+                for item in group
+            )
+        )
         for key, group in value_gen
     }
     if geo_zone in parsed_data:
@@ -123,11 +130,11 @@ def extract_esios_data(
     if url.startswith("https://api.esios.ree.es/indicators"):
         # NOTE: Geozone selection can be expanded if needed.
         if tariff == TARIFFS[0] and tz != REFERENCE_TZ:
-            geo_zone = GEOZONES[1]
+            geo_zone = GEOZONE_CANARIAS
         elif tariff == TARIFFS[0]:
-            geo_zone = GEOZONES[0]
+            geo_zone = GEOZONE_PENINSULA
         else:
-            geo_zone = GEOZONES[3]
+            geo_zone = GEOZONE_CEUTA
 
         return extract_prices_from_esios_token(data, sensor_key, geo_zone, tz)
     raise NotImplementedError(f"Data source not known: {url} >{data}")
@@ -142,13 +149,15 @@ def get_daily_urls_to_download(
     """Make URLs for ESIOS price series."""
     sensor_keys = list(sensor_keys)
     if source == "esios_public":
-        assert set(sensor_keys) == {KEY_PVPC}
+        if set(sensor_keys) != {KEY_PVPC}:
+            raise ValueError(f"Public API only supports {KEY_PVPC}, got: {sensor_keys}")
         return (
             [URL_PUBLIC_PVPC_RESOURCE.format(day=now_local_ref.date())],
             [URL_PUBLIC_PVPC_RESOURCE.format(day=next_day_local_ref.date())],
         )
 
-    assert source == "esios"
+    if source != "esios":
+        raise ValueError(f"Unknown data source: {source}")
     today = [
         URL_ESIOS_TOKEN_RESOURCE.format(
             ind=SENSOR_KEY_TO_DATAID[key], day=now_local_ref.date()

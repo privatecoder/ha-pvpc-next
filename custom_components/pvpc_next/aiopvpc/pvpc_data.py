@@ -12,14 +12,13 @@ import asyncio
 import io
 import json
 import logging
+import random
 import zipfile
 from collections import deque
 from datetime import datetime, timedelta
-from random import random
 from typing import Any
 
 import aiohttp
-import async_timeout
 
 from .const import (
     ALL_SENSORS,
@@ -30,31 +29,28 @@ from .const import (
     EsiosApiData,
     EsiosResponse,
     KEY_PVPC,
+    normalize_tariff,
     REFERENCE_TZ,
     SENSOR_KEY_TO_API_SERIES,
     SENSOR_KEY_TO_DATAID,
     TARIFFS,
     UTC_TZ,
-    normalize_tariff,
     zoneinfo,
 )
 from .parser import extract_esios_data, get_daily_urls_to_download
 from .prices import add_composed_price_sensors, make_price_sensor_attributes
 from .pvpc_tariff import (
-    HolidaySource,
     _national_p3_holidays,
     get_current_and_next_power_periods,
     get_current_and_next_price_periods,
+    HolidaySource,
 )
 from .utils import ensure_utc_time
 
 _LOGGER = logging.getLogger(__name__)
 
 _STANDARD_USER_AGENTS = [
-    (
-        "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) "
-        "Gecko/20100101 Firefox/47.3"
-    ),
+    ("Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.3"),
     (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) "
         "Gecko/20100101 Firefox/43.4"
@@ -75,7 +71,7 @@ class BadApiTokenAuthError(Exception):
     """Exception to signal HA that ESIOS API token is invalid (401 status)."""
 
 
-class PVPCData:  # pylint: disable=too-many-instance-attributes
+class PVPCData:
     """
     Data handler for PVPC hourly prices.
 
@@ -86,7 +82,7 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
     with timestamps in UTC and prices in €/kWh.
     """
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
         self,
         *,
         session: aiohttp.ClientSession,
@@ -112,12 +108,16 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
         self._holiday_source = holiday_source
         if self._api_token is not None:
             self._data_source = "esios"
-        assert (data_source != "esios") or self._api_token is not None, data_source
-        self._user_agents = deque(sorted(_STANDARD_USER_AGENTS, key=lambda _: random()))
+        if data_source == "esios" and self._api_token is None:
+            raise ValueError(f"data_source '{data_source}' requires an API token")
+        agents = list(_STANDARD_USER_AGENTS)
+        random.shuffle(agents)
+        self._user_agents = deque(agents)
 
         self._local_timezone = zoneinfo.ZoneInfo(str(local_timezone))
         tariff = normalize_tariff(tariff)
-        assert tariff in TARIFFS
+        if tariff not in TARIFFS:
+            raise ValueError(f"Unknown tariff: {tariff}")
         self.tariff = tariff
 
         self._power = power
@@ -141,7 +141,6 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
             headers["x-api-key"] = self._api_token
             headers["Authorization"] = f"Token token={self._api_token}"
 
-        assert self._session is not None
         async with self._session.get(url, headers=headers) as resp:
             if resp.status < 400:
                 # Read raw bytes: ESIOS transiently serves bad Content-Type
@@ -173,10 +172,18 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
                         resp.content_type,
                     )
                     return None
+                if not isinstance(data, dict):
+                    _LOGGER.warning(
+                        "[%s] Unexpected JSON payload type (%s) from '%s'",
+                        sensor_key,
+                        type(data).__name__,
+                        url,
+                    )
+                    return None
                 return extract_esios_data(
                     data, url, sensor_key, self.tariff, tz=self._local_timezone
                 )
-            if resp.status in (401, 403) and self._data_source == "esios":
+            if resp.status == 401 and self._data_source == "esios":
                 _LOGGER.warning(
                     "[%s] Unauthorized error with '%s': %s",
                     sensor_key,
@@ -184,9 +191,11 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
                     url,
                 )
                 raise BadApiTokenAuthError(
-                    f"[{sensor_key}] Unauthorized access with API token '{self._api_token}'"
+                    f"[{sensor_key}] Unauthorized access "
+                    f"with API token '{self._api_token}'"
                 )
-            if resp.status == 403:  # pragma: no cover
+            if resp.status == 403:
+                # transient forbidden (rate-limit/WAF), not a bad token
                 _LOGGER.warning(
                     "[%s] Forbidden error with '%s': %s",
                     sensor_key,
@@ -218,7 +227,7 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
         """
         try:
             _LOGGER.debug("[%s] Requesting %s", sensor_key, url)
-            async with async_timeout.timeout(self._timeout):
+            async with asyncio.timeout(self._timeout):
                 response = await self._api_get_data(sensor_key, url)
                 if _LOGGER.isEnabledFor(logging.DEBUG) and response is not None:
                     _LOGGER.debug(
@@ -247,7 +256,11 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
                 return response
         except (AttributeError, KeyError) as exc:
             _LOGGER.debug("[%s] Bad try on getting prices (%s)", sensor_key, exc)
-        except asyncio.TimeoutError:
+        except (TypeError, ValueError) as exc:
+            _LOGGER.warning(
+                "[%s] Malformed response from '%s' (%s)", sensor_key, url, exc
+            )
+        except TimeoutError:
             _LOGGER.warning(
                 "[%s] Timeout error requesting data from '%s'", sensor_key, url
             )
@@ -258,32 +271,63 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
     async def check_api_token(
         self, now: datetime, api_token: str | None = None
     ) -> bool:
-        """Check if ESIOS API token is valid."""
-        local_ref_now = ensure_utc_time(now).astimezone(REFERENCE_TZ)
+        """
+        Check if ESIOS API token is valid.
+
+        Returns False only when the API rejects the token (401).
+        Transient failures (timeouts, connection errors, 403/5xx responses)
+        are raised instead, so callers can tell a bad token apart from an
+        unreachable API. The private data-source and token are kept only on
+        success; any failure restores the previous configuration.
+        """
+        prev_data_source = self._data_source
+        prev_api_token = self._api_token
         if api_token is not None:
             self._api_token = api_token
         self._data_source = "esios"
+        local_ref_now = ensure_utc_time(now).astimezone(REFERENCE_TZ)
         today, _ = get_daily_urls_to_download(
             self._data_source,
             {KEY_PVPC},
             local_ref_now,
             local_ref_now,
         )
+        token_ok = False
         try:
-            prices = await self._download_daily_data(KEY_PVPC, today[0])
-        except BadApiTokenAuthError:
-            return False
-        return prices is not None
+            try:
+                async with asyncio.timeout(self._timeout):
+                    response = await self._api_get_data(KEY_PVPC, today[0])
+            except BadApiTokenAuthError:
+                return False
+            except (AttributeError, KeyError, TypeError, ValueError) as exc:
+                # malformed payload from the parsers: the token could not
+                # be validated, which is not the same as invalid
+                raise aiohttp.ClientError(
+                    "ESIOS API unavailable, could not validate token"
+                ) from exc
+            if response is None:
+                # transient failure (403/5xx/malformed payload): the token
+                # could not be validated, which is not the same as invalid
+                raise aiohttp.ClientError(
+                    "ESIOS API unavailable, could not validate token"
+                )
+            token_ok = True
+            return True
+        finally:
+            if not token_ok:
+                self._data_source = prev_data_source
+                self._api_token = prev_api_token
 
     def update_active_sensors(self, data_id: str, enabled: bool):
         """Update enabled API indicators to download."""
-        assert data_id in ALL_SENSORS
+        if data_id not in ALL_SENSORS:
+            raise ValueError(f"Unknown sensor: {data_id}")
         if enabled:
             self._sensor_keys.add(data_id)
         elif data_id in self._sensor_keys:
             self._sensor_keys.remove(data_id)
 
-    async def async_update_all(  # pylint: disable=too-many-locals
+    async def async_update_all(
         self, current_data: EsiosApiData | None, now: datetime
     ) -> EsiosApiData:
         """
@@ -344,34 +388,14 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
 
         # Retry failed sensors on first load (e.g. rate-limited after token check)
         if is_first_load and updated:
-            failed = [
-                i
-                for i in range(len(api_sensors))
-                if not results[i]
-            ]
-            if failed:
-                _LOGGER.debug(
-                    "First load: retrying %d failed sensor(s) %s",
-                    len(failed),
-                    [api_sensors[i] for i in failed],
-                )
-                await asyncio.sleep(3)
-                retry_tasks = [
-                    self._update_prices_series(
-                        api_sensors[i],
-                        current_data.sensors.get(api_sensors[i], {}),
-                        urls_now[i],
-                        urls_next[i],
-                        local_ref_now,
-                    )
-                    for i in failed
-                ]
-                retry_results = await asyncio.gather(*retry_tasks)
-                for new_data, idx in zip(retry_results, failed):
-                    if new_data:
-                        updated = True
-                        current_data.sensors[api_sensors[idx]] = new_data
-                        current_data.availability[api_sensors[idx]] = True
+            await self._retry_failed_first_load(
+                current_data,
+                api_sensors,
+                results,
+                urls_now,
+                urls_next,
+                local_ref_now,
+            )
 
         if updated:
             current_data.data_source = self._data_source
@@ -386,35 +410,85 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
             self.process_state_and_attributes(current_data, sensor_key, now)
         return current_data
 
+    async def _retry_failed_first_load(
+        self,
+        current_data: EsiosApiData,
+        api_sensors: list[str],
+        results: list[dict[datetime, float] | None],
+        urls_now: list[str],
+        urls_next: list[str],
+        local_ref_now: datetime,
+    ) -> None:
+        """Retry sensors that failed on first load, updating data in place."""
+        failed = [i for i, result in enumerate(results) if not result]
+        if not failed:
+            return
+        _LOGGER.debug(
+            "First load: retrying %d failed sensor(s) %s",
+            len(failed),
+            [api_sensors[i] for i in failed],
+        )
+        await asyncio.sleep(3)
+        retry_tasks = [
+            self._update_prices_series(
+                api_sensors[i],
+                current_data.sensors.get(api_sensors[i], {}),
+                urls_now[i],
+                urls_next[i],
+                local_ref_now,
+            )
+            for i in failed
+        ]
+        retry_results = await asyncio.gather(*retry_tasks)
+        for new_data, idx in zip(retry_results, failed):
+            if new_data:
+                current_data.sensors[api_sensors[idx]] = new_data
+                current_data.availability[api_sensors[idx]] = True
+
     async def _async_prewarm_holidays(self, local_now: datetime) -> None:
-        """Populate holiday cache off-loop to avoid blocking in period helpers."""
-        year = local_now.year
-        if year in self._warmed_holiday_years:
+        """Populate holiday cache off-loop to avoid blocking in period helpers.
+
+        Warms the current and next year, so period walks crossing New Year
+        never trigger a synchronous holiday fetch inside the event loop.
+        Warmup is best-effort: a failing holiday source must not break
+        the price update cycle.
+        """
+        for year in (local_now.year, local_now.year + 1):
+            if year in self._warmed_holiday_years:
+                _LOGGER.debug(
+                    "Holiday warmup skipped year=%d source=%s cached=True",
+                    year,
+                    self._holiday_source,
+                )
+                continue
             _LOGGER.debug(
-                "Holiday warmup skipped year=%d source=%s cached=True",
+                "Holiday warmup start year=%d source=%s",
                 year,
                 self._holiday_source,
             )
-            return
-        _LOGGER.debug(
-            "Holiday warmup start year=%d source=%s",
-            year,
-            self._holiday_source,
-        )
-        national_holidays = await asyncio.to_thread(
-            _national_p3_holidays,
-            year,
-            self._holiday_source,
-        )
-        self._warmed_holiday_years.add(year)
-        _LOGGER.debug(
-            "Holiday warmup year=%d source=%s count=%d",
-            year,
-            self._holiday_source,
-            len(national_holidays),
-        )
+            try:
+                national_holidays = await asyncio.to_thread(
+                    _national_p3_holidays,
+                    year,
+                    self._holiday_source,
+                )
+            except Exception as exc:  # noqa: BLE001 - warmup is best-effort
+                _LOGGER.warning(
+                    "Holiday warmup failed year=%d source=%s (%s)",
+                    year,
+                    self._holiday_source,
+                    exc,
+                )
+                continue
+            self._warmed_holiday_years.add(year)
+            _LOGGER.debug(
+                "Holiday warmup year=%d source=%s count=%d",
+                year,
+                self._holiday_source,
+                len(national_holidays),
+            )
 
-    async def _update_prices_series(  # pylint: disable=too-many-arguments
+    async def _update_prices_series(
         self,
         sensor_key: str,
         current_prices: dict[datetime, float],
@@ -434,7 +508,8 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
             )
             return None
         if (
-            not evening and 20 < current_num_prices
+            not evening
+            and current_num_prices > 20
             and (
                 list(current_prices)[-12].astimezone(REFERENCE_TZ).date()
                 == local_ref_now.date()
@@ -449,6 +524,7 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
             )
             return None
 
+        downloaded = False
         if current_num_prices and (
             next(iter(current_prices)).astimezone(REFERENCE_TZ).date()
             == local_ref_now.date()
@@ -466,8 +542,9 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
             # make API call to download today prices
             prices_response = await self._download_daily_data(sensor_key, url_now)
             if prices_response is None:
+                # failed fetch: keep cached prices, signal 'nothing new'
                 _LOGGER.debug("[%s] No response for %s", sensor_key, url_now)
-                return current_prices
+                return None
             if not prices_response.series.get(sensor_key):
                 _LOGGER.debug(
                     "[%s] Response missing series for %s (keys=%s)",
@@ -475,9 +552,10 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
                     url_now,
                     list(prices_response.series),
                 )
-                return current_prices
+                return None
             prices = prices_response.series[sensor_key]
             current_prices.update(prices)
+            downloaded = True
 
         # At evening (after 20:20), it is possible to retrieve next day prices
         if evening:
@@ -494,6 +572,7 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
             else:
                 prices_fut = prices_fut_response.series[sensor_key]
                 current_prices.update(prices_fut)
+                downloaded = True
 
         if _LOGGER.isEnabledFor(logging.DEBUG) and current_prices:
             min_ts = min(current_prices)
@@ -506,7 +585,9 @@ class PVPCData:  # pylint: disable=too-many-instance-attributes
                 max_ts.strftime("%Y-%m-%d %Hh"),
             )
 
-        return current_prices
+        # only report data when something was actually fetched this cycle,
+        # so failed refreshes don't refresh availability or last_update
+        return current_prices if downloaded else None
 
     @property
     def attribution(self) -> str:
