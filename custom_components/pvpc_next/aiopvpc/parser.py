@@ -5,6 +5,7 @@ Simple aio library to download Spanish electricity hourly prices.
 * Parser for the contents of the JSON files
 """
 
+import logging
 from collections.abc import Iterable
 from datetime import datetime, timedelta
 from itertools import groupby
@@ -16,6 +17,7 @@ from .const import (
     EsiosResponse,
     GEOZONE_CANARIAS,
     GEOZONE_CEUTA,
+    GEOZONE_ESPANA,
     GEOZONE_ID2NAME,
     GEOZONE_PENINSULA,
     KEY_PVPC,
@@ -30,11 +32,51 @@ from .const import (
     zoneinfo,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
+# Local timezones of the geographic zones recognized for the
+# "2.0TD Península / Baleares / Canarias" tariff. Baleares shares
+# Europe/Madrid with the peninsula; Ceuta/Melilla have their own tariff
+# and always map to the Ceuta zone.
+_TZ_TO_GEOZONE: dict[str, str] = {
+    "Europe/Madrid": GEOZONE_PENINSULA,
+    "Atlantic/Canary": GEOZONE_CANARIAS,
+}
+
 
 def _timezone_offset(tz: zoneinfo.ZoneInfo = REFERENCE_TZ) -> timedelta:
+    """Fixed offset from Europe/Madrid to the given local timezone.
+
+    Computed at a single reference date, so it is only correct for zones
+    whose offset to Madrid never changes (true for all Spanish zones,
+    which switch DST on the same dates).
+    """
     ref_ts = datetime(2021, 1, 1, tzinfo=REFERENCE_TZ).astimezone(UTC_TZ)
     loc_ts = datetime(2021, 1, 1, tzinfo=tz).astimezone(UTC_TZ)
     return loc_ts - ref_ts
+
+
+def _select_geo_zone(tariff: str, tz: zoneinfo.ZoneInfo) -> str:
+    """Return the ESIOS geo zone for a tariff + local timezone.
+
+    The Ceuta/Melilla tariff always uses the Ceuta zone. For the peninsula
+    tariff the recognized Spanish timezones select the zone:
+    Europe/Madrid -> Península (shared by Baleares) and
+    Atlantic/Canary -> Canarias. Any other timezone defaults to Península
+    with a warning: PVPC values are national across the PCB zones, and the
+    local-time offset is applied separately by `_timezone_offset`.
+    """
+    if tariff != TARIFFS[0]:
+        return GEOZONE_CEUTA
+    geo_zone = _TZ_TO_GEOZONE.get(str(tz))
+    if geo_zone is None:
+        _LOGGER.warning(
+            "Timezone '%s' is not a recognized Spanish zone; assuming %s",
+            tz,
+            GEOZONE_PENINSULA,
+        )
+        return GEOZONE_PENINSULA
+    return geo_zone
 
 
 def extract_prices_from_esios_public(
@@ -102,10 +144,10 @@ def extract_prices_from_esios_token(
     }
     if geo_zone in parsed_data:
         geo_data = parsed_data[geo_zone]
-    elif "Península" in parsed_data:
-        geo_data = parsed_data["Península"]
+    elif GEOZONE_PENINSULA in parsed_data:
+        geo_data = parsed_data[GEOZONE_PENINSULA]
     else:
-        geo_data = parsed_data["España"]
+        geo_data = parsed_data[GEOZONE_ESPANA]
 
     return EsiosResponse(
         name=indicator_data["name"],
@@ -128,14 +170,7 @@ def extract_esios_data(
         return extract_prices_from_esios_public(data, TARIFF2ID[tariff], tz)
 
     if url.startswith("https://api.esios.ree.es/indicators"):
-        # NOTE: Geozone selection can be expanded if needed.
-        if tariff == TARIFFS[0] and tz != REFERENCE_TZ:
-            geo_zone = GEOZONE_CANARIAS
-        elif tariff == TARIFFS[0]:
-            geo_zone = GEOZONE_PENINSULA
-        else:
-            geo_zone = GEOZONE_CEUTA
-
+        geo_zone = _select_geo_zone(tariff, tz)
         return extract_prices_from_esios_token(data, sensor_key, geo_zone, tz)
     raise NotImplementedError(f"Data source not known: {url} >{data}")
 

@@ -142,3 +142,8 @@ def add_composed_price_sensors(data: EsiosApiData) -> None:
             for ts_hour in sorted(common_ts_prices)
         }
         data.availability[KEY_INDEXED] = True
+    elif KEY_INDEXED in data.sensors:
+        # source series no longer available: drop the stale composed prices,
+        # keeping the sensor entry so its state is recomputed (-> unavailable)
+        data.sensors[KEY_INDEXED] = {}
+        data.availability[KEY_INDEXED] = False

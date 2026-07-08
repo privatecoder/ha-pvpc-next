@@ -35,18 +35,8 @@ PRICE_PRECISION = 5
 DataSource = Literal["esios_public", "esios"]
 GEOZONE_PENINSULA = "Península"
 GEOZONE_CANARIAS = "Canarias"
-GEOZONE_BALEARES = "Baleares"
 GEOZONE_CEUTA = "Ceuta"
-GEOZONE_MELILLA = "Melilla"
 GEOZONE_ESPANA = "España"
-GEOZONES = [
-    GEOZONE_PENINSULA,
-    GEOZONE_CANARIAS,
-    GEOZONE_BALEARES,
-    GEOZONE_CEUTA,
-    GEOZONE_MELILLA,
-    GEOZONE_ESPANA,
-]
 GEOZONE_ID2NAME: dict[int, str] = {
     3: "España",
     8741: "Península",
