@@ -13,7 +13,7 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Average Price Today sensor for daily price tracking.
 - Configurable Better Price Target (default: very cheap) to pick the next neutral/cheap/very cheap window; if none match, it falls back to the lowest available future price.
 - National holidays handled via a forked `aiopvpc` library that uses `spanish-pvpc-holidays` (source-selectable via `python-holidays` or direct `csv` from seg-social.es; no hardcoded yearly tables).
-- General bugfixes, hardening, and stability improvements.
+- General bugfixes, hardening, and stability improvements — including resilience to malformed public-API responses (wrong `Content-Type` or ZIP-wrapped data) so public-mode sensors don't get stuck unavailable.
 
 ---
 
@@ -55,12 +55,14 @@ Official PVPC prices: https://www.esios.ree.es/en/pvpc
 - Contracted power (P1 and P3) is used to compute the Available Power sensor (in W).
 - Change Better Price Target via **Settings -> Devices & Integrations -> PVPC Next -> Configure**.
 - Change Current Price mode via **Settings -> Devices & Integrations -> PVPC Next -> Configure** (`indexed` is available only with private API enabled and API token configured).
+- In `indexed` mode the Current Price is computed as `PVPC − market adjustment` (ESIOS indicator `2108`); there is no separate adjustment sensor. The optional Reference Price sensor then shows the `Current PVPC` value (and, in `pvpc` mode, the `Current Indexed Price`).
 - Toggle the optional **Show Reference Price** setting in **Configure** to expose the mode-dependent reference sensor.
-- Update frequency for Next Price In, Next Best In, Next Period In, and Next Power Period In can be set to disabled/hourly/every minute in **Configure**; disabled will turn the entity off in the registry.
+- Update frequency for Next Price In, Next Best In, Next Period In, and Next Power Period In can be set to disabled/hourly/every minute (default: every minute) in **Configure**; disabled will turn the entity off in the registry.
 - Holiday source can be set in **Configure**:
   - `csv` (default in aiopvpc `PVPCData` and CLI).
   - `python-holidays` (uses the Holidays python library).
 - If no target is found, Next Best sensors show Unknown; if price data is missing, they show Unavailable.
+- Prices are refreshed roughly every 30 minutes; the next day's prices are published by ESIOS around 20:15 (Europe/Madrid) and fetched from ~20:20.
 - The old "PVPC" sensor is now "Current Price" and keeps the remaining attributes that are not exposed as separate sensors.
 - Private API usage is optional and disabled by default; it requires an ESIOS API token and can be enabled in **Configure** (enables Injection Price, optional Reference Price, MAG tax and OMIE Price sensors).
 - Recorder exclusions are configured in `configuration.yaml` (not from the integration), for example:
@@ -93,6 +95,7 @@ recorder:
     - `1739` (Injection)
     - `1900` (MAG tax)
     - `10211` (OMIE Price)
+    - `2108` (Market Adjustment — fetched only in Indexed mode to compute the indexed price; no dedicated sensor)
   - The API token is sent via headers (`x-api-key` and `Authorization`).
 
 ---
@@ -107,6 +110,8 @@ recorder:
 ---
 
 ## Installation (HACS)
+
+> Not available in the default HACS store — add it as a **custom repository** (steps below). A `hacs.json` is included so HACS can install the tagged and pre-release versions.
 
 1. Open **HACS -> Integrations** in Home Assistant.
 2. Click the menu (...) -> **Custom repositories**.
