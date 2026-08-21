@@ -268,6 +268,17 @@ def _price_ratio_for_timestamp(
     return round((price - min_price) / (max_price - min_price), 2)
 
 
+def _current_price_bucket(
+    coordinator: ElecPricesDataUpdateCoordinator, now_utc: datetime
+) -> tuple[datetime, timedelta]:
+    """Return the (bucket_start, bucket_span) for the price series' resolution."""
+    if coordinator.api.quarter_hourly_pvpc:
+        minute_bucket = (now_utc.minute // 15) * 15
+        bucket = now_utc.replace(minute=minute_bucket, second=0, microsecond=0)
+        return bucket, timedelta(minutes=15)
+    return now_utc.replace(minute=0, second=0, microsecond=0), timedelta(hours=1)
+
+
 def _next_price_candidate(
     coordinator: ElecPricesDataUpdateCoordinator,
 ) -> tuple[datetime, float] | None:
@@ -275,11 +286,11 @@ def _next_price_candidate(
     if not current_prices:
         return None
     now_utc = ensure_utc_time(dt_util.utcnow())
-    current_hour = now_utc.replace(minute=0, second=0, microsecond=0)
-    next_hour = current_hour + timedelta(hours=1)
-    if next_hour in current_prices:
-        return next_hour, current_prices[next_hour]
-    next_ts = min((ts for ts in current_prices if ts > current_hour), default=None)
+    current_bucket, bucket_span = _current_price_bucket(coordinator, now_utc)
+    next_bucket = current_bucket + bucket_span
+    if next_bucket in current_prices:
+        return next_bucket, current_prices[next_bucket]
+    next_ts = min((ts for ts in current_prices if ts > current_bucket), default=None)
     if not next_ts:
         return None
     return next_ts, current_prices[next_ts]
@@ -449,10 +460,9 @@ def _num_better_prices_ahead(
     if not current_prices:
         return None
     now_utc = ensure_utc_time(dt_util.utcnow())
+    current_bucket, _bucket_span = _current_price_bucket(coordinator, now_utc)
     try:
-        current_price = current_prices[
-            now_utc.replace(minute=0, second=0, microsecond=0)
-        ]
+        current_price = current_prices[current_bucket]
     except KeyError:
         return None
     return sum(
@@ -970,10 +980,15 @@ class ElecPriceSensor(CoordinatorEntity[ElecPricesDataUpdateCoordinator], Sensor
                 )
             )
 
-        # Update 'state' value in hour changes
+        # Update 'state' value on hour changes (or every 15 min for a
+        # quarter-hourly PVPC series)
+        update_minutes = [0, 15, 30, 45] if self.coordinator.api.quarter_hourly_pvpc else [0]
         self.async_on_remove(
             async_track_time_change(
-                self.hass, self.update_current_price, second=[0], minute=[0]
+                self.hass,
+                self.update_current_price,
+                second=[0],
+                minute=update_minutes,
             )
         )
         _LOGGER.debug(
@@ -1054,9 +1069,15 @@ class PVPCAttributeSensor(CoordinatorEntity[ElecPricesDataUpdateCoordinator], Se
                 )
             )
         elif self.entity_description.update_on_hour:
+            update_minutes = (
+                [0, 15, 30, 45] if self.coordinator.api.quarter_hourly_pvpc else [0]
+            )
             self.async_on_remove(
                 async_track_time_change(
-                    self.hass, self._update_on_time_change, minute=[0], second=[0]
+                    self.hass,
+                    self._update_on_time_change,
+                    minute=update_minutes,
+                    second=[0],
                 )
             )
         if self.entity_description.key in UPDATE_FREQUENCY_BY_SENSOR:

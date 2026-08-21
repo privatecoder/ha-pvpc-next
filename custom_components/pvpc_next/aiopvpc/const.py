@@ -59,6 +59,11 @@ ATTRIBUTIONS: dict[DataSource, str] = {
 
 # api.esios.ree.es/indicators
 ESIOS_PVPC = "1001"
+# "Precio medio cuarto horario final comercializadores de referencia": the
+# genuinely quarter-hourly PVPC-equivalent series (96 values/day), in effect
+# since the Oct-2025 15-min settlement change (BOE-A-2025-4908/5342).
+# Indicator 1001 stays hourly even with time_trunc=quarter-hour.
+ESIOS_PVPC_QUARTER_HOURLY = "791"
 ESIOS_INJECTION = "1739"
 ESIOS_MAG = "1900"  # regargo GAS
 ESIOS_OMIE = "10211"  # precio mayorista

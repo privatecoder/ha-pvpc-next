@@ -180,8 +180,14 @@ def get_daily_urls_to_download(
     sensor_keys: Iterable[str],
     now_local_ref: datetime,
     next_day_local_ref: datetime,
+    data_id_overrides: dict[str, str] | None = None,
 ) -> tuple[list[str], list[str]]:
-    """Make URLs for ESIOS price series."""
+    """Make URLs for ESIOS price series.
+
+    `data_id_overrides` lets a caller request a different ESIOS indicator
+    for a given sensor key than the default in `SENSOR_KEY_TO_DATAID`
+    (used for the opt-in quarter-hourly PVPC series).
+    """
     sensor_keys = list(sensor_keys)
     if source == "esios_public":
         if set(sensor_keys) != {KEY_PVPC}:
@@ -193,15 +199,17 @@ def get_daily_urls_to_download(
 
     if source != "esios":
         raise ValueError(f"Unknown data source: {source}")
+    overrides = data_id_overrides or {}
     today = [
         URL_ESIOS_TOKEN_RESOURCE.format(
-            ind=SENSOR_KEY_TO_DATAID[key], day=now_local_ref.date()
+            ind=overrides.get(key, SENSOR_KEY_TO_DATAID[key]), day=now_local_ref.date()
         )
         for key in sensor_keys
     ]
     tomorrow = [
         URL_ESIOS_TOKEN_RESOURCE.format(
-            ind=SENSOR_KEY_TO_DATAID[key], day=next_day_local_ref.date()
+            ind=overrides.get(key, SENSOR_KEY_TO_DATAID[key]),
+            day=next_day_local_ref.date(),
         )
         for key in sensor_keys
     ]

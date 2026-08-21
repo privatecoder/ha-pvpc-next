@@ -37,6 +37,7 @@ from .const import (
     ATTR_BETTER_PRICE_TARGET,
     ATTR_ENABLE_PRIVATE_API,
     ATTR_PRICE_MODE,
+    ATTR_QUARTER_HOURLY_PVPC,
     ATTR_SHOW_REFERENCE_PRICE,
     ATTR_HOLIDAY_SOURCE,
     ATTR_NEXT_BEST_IN_UPDATE,
@@ -51,6 +52,7 @@ from .const import (
     DEFAULT_BETTER_PRICE_TARGET,
     DEFAULT_ENABLE_PRIVATE_API,
     DEFAULT_PRICE_MODE,
+    DEFAULT_QUARTER_HOURLY_PVPC,
     DEFAULT_SHOW_REFERENCE_PRICE,
     HOLIDAY_SOURCES,
     PRICE_MODES,
@@ -81,6 +83,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
     _better_price_target: str | None = None
     _enable_private_api: bool | None = None
     _price_mode: str | None = None
+    _quarter_hourly_pvpc: bool | None = None
     _show_reference_price: bool | None = None
     _next_price_in_update: str | None = None
     _next_best_in_update: str | None = None
@@ -226,6 +229,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                     return await self.async_step_price_mode()
                 return await self.async_step_api_token(user_input)
             self._price_mode = DEFAULT_PRICE_MODE
+            self._quarter_hourly_pvpc = False
             return self.async_create_entry(
                 title="",
                 data={
@@ -241,6 +245,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                     ATTR_HOLIDAY_SOURCE: self._holiday_source,
                     ATTR_ENABLE_PRIVATE_API: self._enable_private_api,
                     ATTR_PRICE_MODE: self._price_mode,
+                    ATTR_QUARTER_HOURLY_PVPC: self._quarter_hourly_pvpc,
                     ATTR_SHOW_REFERENCE_PRICE: bool(self._show_reference_price),
                     CONF_API_TOKEN: None,
                 },
@@ -288,6 +293,16 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                 )
             )
         )
+        default_quarter_hourly_pvpc = (
+            bool(self._quarter_hourly_pvpc)
+            if self._quarter_hourly_pvpc is not None
+            else bool(
+                options.get(
+                    ATTR_QUARTER_HOURLY_PVPC,
+                    data.get(ATTR_QUARTER_HOURLY_PVPC, DEFAULT_QUARTER_HOURLY_PVPC),
+                )
+            )
+        )
         if default_mode not in selectable_price_modes:
             default_mode = DEFAULT_PRICE_MODE
         schema = vol.Schema(
@@ -302,6 +317,9 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                 vol.Required(
                     ATTR_SHOW_REFERENCE_PRICE, default=default_show_reference_price
                 ): bool,
+                vol.Required(
+                    ATTR_QUARTER_HOURLY_PVPC, default=default_quarter_hourly_pvpc
+                ): bool,
             }
         )
 
@@ -315,6 +333,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                 )
             self._price_mode = selected_mode
             self._show_reference_price = bool(user_input[ATTR_SHOW_REFERENCE_PRICE])
+            self._quarter_hourly_pvpc = bool(user_input[ATTR_QUARTER_HOURLY_PVPC])
             return self.async_create_entry(
                 title="",
                 data={
@@ -328,6 +347,7 @@ class PVPCOptionsFlowHandler(OptionsFlowWithReload):
                     ATTR_HOLIDAY_SOURCE: self._holiday_source,
                     ATTR_ENABLE_PRIVATE_API: bool(self._enable_private_api),
                     ATTR_PRICE_MODE: self._price_mode,
+                    ATTR_QUARTER_HOURLY_PVPC: self._quarter_hourly_pvpc,
                     ATTR_SHOW_REFERENCE_PRICE: bool(self._show_reference_price),
                     CONF_API_TOKEN: self._api_token,
                 },
@@ -347,6 +367,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
     _better_price_target: str | None = None
     _enable_private_api: bool | None = None
     _price_mode: str | None = None
+    _quarter_hourly_pvpc: bool | None = None
     _show_reference_price: bool | None = None
     _next_price_in_update: str | None = None
     _next_best_in_update: str | None = None
@@ -461,6 +482,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                 return await self.async_step_api_token()
             self._price_mode = DEFAULT_PRICE_MODE
             self._show_reference_price = DEFAULT_SHOW_REFERENCE_PRICE
+            self._quarter_hourly_pvpc = DEFAULT_QUARTER_HOURLY_PVPC
             return self.async_create_entry(
                 title=self._name,
                 data={
@@ -538,6 +560,11 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             if self._show_reference_price is not None
             else DEFAULT_SHOW_REFERENCE_PRICE
         )
+        default_quarter_hourly_pvpc = (
+            bool(self._quarter_hourly_pvpc)
+            if self._quarter_hourly_pvpc is not None
+            else DEFAULT_QUARTER_HOURLY_PVPC
+        )
         if default_mode not in selectable_price_modes:
             default_mode = DEFAULT_PRICE_MODE
         schema = vol.Schema(
@@ -552,6 +579,9 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(
                     ATTR_SHOW_REFERENCE_PRICE, default=default_show_reference_price
                 ): bool,
+                vol.Required(
+                    ATTR_QUARTER_HOURLY_PVPC, default=default_quarter_hourly_pvpc
+                ): bool,
             }
         )
 
@@ -565,6 +595,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
             self._price_mode = selected_mode
             self._show_reference_price = bool(user_input[ATTR_SHOW_REFERENCE_PRICE])
+            self._quarter_hourly_pvpc = bool(user_input[ATTR_QUARTER_HOURLY_PVPC])
             assert self._name is not None
             return self.async_create_entry(
                 title=self._name,
@@ -588,6 +619,7 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
             ATTR_HOLIDAY_SOURCE: normalize_holiday_source(self._holiday_source),
             ATTR_ENABLE_PRIVATE_API: bool(self._enable_private_api),
             ATTR_PRICE_MODE: normalize_price_mode(self._price_mode),
+            ATTR_QUARTER_HOURLY_PVPC: bool(self._quarter_hourly_pvpc),
             ATTR_SHOW_REFERENCE_PRICE: bool(self._show_reference_price),
             CONF_API_TOKEN: self._api_token,
         }
@@ -615,6 +647,9 @@ class TariffSelectorConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         self._show_reference_price = entry_data.get(
             ATTR_SHOW_REFERENCE_PRICE, DEFAULT_SHOW_REFERENCE_PRICE
+        )
+        self._quarter_hourly_pvpc = entry_data.get(
+            ATTR_QUARTER_HOURLY_PVPC, DEFAULT_QUARTER_HOURLY_PVPC
         )
         self._enable_private_api = entry_data.get(
             ATTR_ENABLE_PRIVATE_API,

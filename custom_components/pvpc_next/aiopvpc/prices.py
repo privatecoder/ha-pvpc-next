@@ -36,12 +36,21 @@ def _split_today_tomorrow_prices(
 
 
 def _make_price_tag_attributes(
-    prices: dict[datetime, float], timezone: zoneinfo.ZoneInfo, tomorrow: bool
+    prices: dict[datetime, float],
+    timezone: zoneinfo.ZoneInfo,
+    tomorrow: bool,
+    quarter_hourly: bool = False,
 ) -> dict[str, Any]:
     prefix = "price_next_day_" if tomorrow else "price_"
     attributes = {}
     for ts_utc, price_h in prices.items():
         ts_local = ts_utc.astimezone(timezone)
+        if quarter_hourly and ts_local.minute != 0:
+            # price_XXh is a compact per-hour overview; with a quarter-hourly
+            # series only the top-of-hour value is tagged here (full 15-min
+            # resolution is already available from the sensor's own state
+            # history).
+            continue
         attr_key = f"{prefix}{ts_local.hour:02d}h"
         if attr_key in attributes:  # DST change with duplicated hour :)
             attr_key += "_d"
@@ -102,6 +111,7 @@ def make_price_sensor_attributes(
     current_prices: dict[datetime, float],
     utc_time: datetime,
     timezone: zoneinfo.ZoneInfo,
+    quarter_hourly: bool = False,
 ) -> dict[str, Any]:
     """Generate sensor attributes for hourly prices variables."""
     current_price = current_prices[utc_time]
@@ -109,7 +119,7 @@ def make_price_sensor_attributes(
     price_attrs = _make_price_stats_attributes(
         sensor_key, current_price, today, utc_time, timezone
     )
-    price_tags = _make_price_tag_attributes(today, timezone, False)
+    price_tags = _make_price_tag_attributes(today, timezone, False, quarter_hourly)
     if tomorrow:
         tomorrow_prices = {
             f"{key} (next day)": value
@@ -117,7 +127,9 @@ def make_price_sensor_attributes(
                 sensor_key, current_price, tomorrow, utc_time, timezone
             ).items()
         }
-        tomorrow_price_tags = _make_price_tag_attributes(tomorrow, timezone, True)
+        tomorrow_price_tags = _make_price_tag_attributes(
+            tomorrow, timezone, True, quarter_hourly
+        )
         price_attrs = {**price_attrs, **tomorrow_prices}
         price_tags = {**price_tags, **tomorrow_price_tags}
     return {**price_attrs, **price_tags}

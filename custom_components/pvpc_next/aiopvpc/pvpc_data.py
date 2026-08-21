@@ -26,6 +26,7 @@ from .const import (
     DataSource,
     DEFAULT_POWER_KW,
     DEFAULT_TIMEOUT,
+    ESIOS_PVPC_QUARTER_HOURLY,
     EsiosApiData,
     EsiosResponse,
     KEY_PVPC,
@@ -95,6 +96,7 @@ class PVPCData:
         api_token: str | None = None,
         holiday_source: HolidaySource = "csv",
         sensor_keys: tuple[str, ...] = (KEY_PVPC,),
+        quarter_hourly_pvpc: bool = False,
     ) -> None:
         """Set up API access."""
         self.states: dict[str, float | None] = {}
@@ -106,6 +108,10 @@ class PVPCData:
         self._data_source = data_source
         self._api_token = api_token
         self._holiday_source = holiday_source
+        self._quarter_hourly_pvpc = quarter_hourly_pvpc
+        self._data_id_overrides: dict[str, str] = (
+            {KEY_PVPC: ESIOS_PVPC_QUARTER_HOURLY} if quarter_hourly_pvpc else {}
+        )
         if self._api_token is not None:
             self._data_source = "esios"
         if data_source == "esios" and self._api_token is None:
@@ -128,6 +134,11 @@ class PVPCData:
     def using_private_api(self) -> bool:
         """Check if an API token is available and data-source is ESIOS."""
         return self._api_token is not None and self._data_source == "esios"
+
+    @property
+    def quarter_hourly_pvpc(self) -> bool:
+        """Check if the PVPC series is fetched at 15-min resolution."""
+        return self._quarter_hourly_pvpc
 
     async def _api_get_data(self, sensor_key: str, url: str) -> EsiosResponse | None:
         headers = {
@@ -291,6 +302,7 @@ class PVPCData:
             {KEY_PVPC},
             local_ref_now,
             local_ref_now,
+            self._data_id_overrides,
         )
         token_ok = False
         try:
@@ -362,6 +374,7 @@ class PVPCData:
             api_sensors,
             local_ref_now,
             next_day,
+            self._data_id_overrides,
         )
         updated = False
         tasks = []
@@ -609,9 +622,17 @@ class PVPCData:
         """
         attributes: dict[str, Any] = {
             "sensor_id": sensor_key,
-            "data_id": SENSOR_KEY_TO_DATAID.get(sensor_key, "composed"),
+            "data_id": self._data_id_overrides.get(
+                sensor_key, SENSOR_KEY_TO_DATAID.get(sensor_key, "composed")
+            ),
         }
-        utc_time = ensure_utc_time(utc_now.replace(minute=0, second=0, microsecond=0))
+        if sensor_key == KEY_PVPC and self._quarter_hourly_pvpc:
+            minute_bucket = (utc_now.minute // 15) * 15
+            utc_time = ensure_utc_time(
+                utc_now.replace(minute=minute_bucket, second=0, microsecond=0)
+            )
+        else:
+            utc_time = ensure_utc_time(utc_now.replace(minute=0, second=0, microsecond=0))
         actual_time = utc_time.astimezone(self._local_timezone)
         current_prices = current_data.sensors.get(sensor_key, {})
         if len(current_prices) > 25 and actual_time.hour < 20:
@@ -654,7 +675,11 @@ class PVPCData:
 
         # generate price attributes
         price_attrs = make_price_sensor_attributes(
-            sensor_key, current_data.sensors[sensor_key], utc_time, self._local_timezone
+            sensor_key,
+            current_data.sensors[sensor_key],
+            utc_time,
+            self._local_timezone,
+            sensor_key == KEY_PVPC and self._quarter_hourly_pvpc,
         )
 
         # generate PVPC 2.0TD sensor attributes

@@ -10,6 +10,7 @@ ATTR_POWER_P1 = "power_p1"
 ATTR_POWER_P3 = "power_p3"
 ATTR_BETTER_PRICE_TARGET = "better_price_target"
 ATTR_ENABLE_PRIVATE_API = "enable_private_api"
+ATTR_QUARTER_HOURLY_PVPC = "quarter_hourly_pvpc"
 ATTR_PRICE_MODE = "price_mode"
 ATTR_SHOW_REFERENCE_PRICE = "show_reference_price"
 ATTR_HOLIDAY_SOURCE = "holiday_source"
@@ -27,6 +28,7 @@ DEFAULT_TARIFF = TARIFFS[0]
 
 DEFAULT_BETTER_PRICE_TARGET = "very cheap"
 DEFAULT_ENABLE_PRIVATE_API = False
+DEFAULT_QUARTER_HOURLY_PVPC = False
 DEFAULT_PRICE_MODE = "pvpc"
 DEFAULT_SHOW_REFERENCE_PRICE = False
 BETTER_PRICE_TARGETS = ("neutral", "cheap", "very cheap")

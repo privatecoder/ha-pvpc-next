@@ -20,7 +20,8 @@
       "price_mode": {
         "data": {
           "price_mode": "Price mode",
-          "show_reference_price": "Show Reference Price"
+          "show_reference_price": "Show Reference Price",
+          "quarter_hourly_pvpc": "Fetch PVPC at 15-minute resolution (requires the API token above)"
         },
         "description": "Select which series should be used as Current Price.",
         "title": "Price mode"

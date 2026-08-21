@@ -20,7 +20,8 @@
       "price_mode": {
         "data": {
           "price_mode": "Modo de precio",
-          "show_reference_price": "Mostrar precio de referencia"
+          "show_reference_price": "Mostrar precio de referencia",
+          "quarter_hourly_pvpc": "Obtener el PVPC con resolución de 15 minutos (requiere el token de API indicado arriba)"
         },
         "description": "Selecciona qué serie debe usarse como Precio actual.",
         "title": "Modo de precio"
@@ -75,7 +76,8 @@
       "price_mode": {
         "data": {
           "price_mode": "Modo de precio",
-          "show_reference_price": "Mostrar precio de referencia"
+          "show_reference_price": "Mostrar precio de referencia",
+          "quarter_hourly_pvpc": "Obtener el PVPC con resolución de 15 minutos (requiere el token de API indicado arriba)"
         },
         "description": "Selecciona qué serie debe usarse como Precio actual.",
         "title": "Modo de precio"

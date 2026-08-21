@@ -20,11 +20,13 @@ from .const import (
     ATTR_BETTER_PRICE_TARGET,
     ATTR_HOLIDAY_SOURCE,
     ATTR_PRICE_MODE,
+    ATTR_QUARTER_HOURLY_PVPC,
     ATTR_TARIFF,
     DOMAIN,
     DEFAULT_BETTER_PRICE_TARGET,
     DEFAULT_HOLIDAY_SOURCE,
     DEFAULT_PRICE_MODE,
+    DEFAULT_QUARTER_HOURLY_PVPC,
     LEGACY_ATTR_POWER,
     LEGACY_ATTR_POWER_P2_P3,
     LEGACY_ATTR_POWER_P3,
@@ -86,6 +88,13 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
             _LOGGER.warning(
                 "Indexed mode requested but private API is disabled; falling back to PVPC mode"
             )
+        # quarter-hourly PVPC reuses the private-API token (indicator 791
+        # is only available on the token-based endpoint), so it's only
+        # effective when the private API is actually in use.
+        quarter_hourly_pvpc = use_private_api and bool(
+            config.get(ATTR_QUARTER_HOURLY_PVPC, DEFAULT_QUARTER_HOURLY_PVPC)
+        )
+        self._quarter_hourly_pvpc = quarter_hourly_pvpc
 
         self.api = PVPCData(
             session=async_get_clientsession(hass),
@@ -96,6 +105,7 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
             api_token=api_token,
             holiday_source=holiday_source,
             sensor_keys=tuple(sensor_keys),
+            quarter_hourly_pvpc=quarter_hourly_pvpc,
         )
         self._better_price_target = better_price_target
         super().__init__(
