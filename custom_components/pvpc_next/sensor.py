@@ -271,7 +271,12 @@ def _price_ratio_for_timestamp(
 def _current_price_bucket(
     coordinator: ElecPricesDataUpdateCoordinator, now_utc: datetime
 ) -> tuple[datetime, timedelta]:
-    """Return the (bucket_start, bucket_span) for the price series' resolution."""
+    """Return the (bucket_start, bucket_span) for the price series' resolution.
+
+    EN: 15 minutes for a quarter-hourly PVPC series, 1 hour otherwise.
+    ES: 15 minutos para una serie PVPC de cuarto de hora, 1 hora en el
+    resto de casos.
+    """
     if coordinator.api.quarter_hourly_pvpc:
         minute_bucket = (now_utc.minute // 15) * 15
         bucket = now_utc.replace(minute=minute_bucket, second=0, microsecond=0)
@@ -980,8 +985,10 @@ class ElecPriceSensor(CoordinatorEntity[ElecPricesDataUpdateCoordinator], Sensor
                 )
             )
 
-        # Update 'state' value on hour changes (or every 15 min for a
+        # EN: Update 'state' value on hour changes (or every 15 min for a
         # quarter-hourly PVPC series)
+        # ES: Actualiza el valor de 'state' en cada cambio de hora (o cada
+        # 15 min si la serie PVPC es de cuarto de hora)
         update_minutes = [0, 15, 30, 45] if self.coordinator.api.quarter_hourly_pvpc else [0]
         self.async_on_remove(
             async_track_time_change(

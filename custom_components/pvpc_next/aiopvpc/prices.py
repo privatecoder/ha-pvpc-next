@@ -46,10 +46,14 @@ def _make_price_tag_attributes(
     for ts_utc, price_h in prices.items():
         ts_local = ts_utc.astimezone(timezone)
         if quarter_hourly and ts_local.minute != 0:
-            # price_XXh is a compact per-hour overview; with a quarter-hourly
-            # series only the top-of-hour value is tagged here (full 15-min
-            # resolution is already available from the sensor's own state
-            # history).
+            # EN: price_XXh is a compact per-hour overview; with a
+            # quarter-hourly series only the top-of-hour value is tagged
+            # here (full 15-min resolution is already available from the
+            # sensor's own state history).
+            # ES: price_XXh es un resumen compacto por hora; con una serie
+            # de cuarto de hora aquí solo se etiqueta el valor en punto
+            # (la resolución completa de 15 min ya está disponible en el
+            # propio historial de estados del sensor).
             continue
         attr_key = f"{prefix}{ts_local.hour:02d}h"
         if attr_key in attributes:  # DST change with duplicated hour :)

@@ -184,9 +184,13 @@ def get_daily_urls_to_download(
 ) -> tuple[list[str], list[str]]:
     """Make URLs for ESIOS price series.
 
-    `data_id_overrides` lets a caller request a different ESIOS indicator
-    for a given sensor key than the default in `SENSOR_KEY_TO_DATAID`
-    (used for the opt-in quarter-hourly PVPC series).
+    EN: `data_id_overrides` lets a caller request a different ESIOS
+    indicator for a given sensor key than the default in
+    `SENSOR_KEY_TO_DATAID` (used for the opt-in quarter-hourly PVPC series).
+
+    ES: `data_id_overrides` permite pedir, para una clave de sensor dada,
+    un indicador ESIOS distinto del que hay por defecto en
+    `SENSOR_KEY_TO_DATAID` (se usa para la serie PVPC de 15 min, opcional).
     """
     sensor_keys = list(sensor_keys)
     if source == "esios_public":

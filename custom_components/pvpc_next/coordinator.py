@@ -88,9 +88,12 @@ class ElecPricesDataUpdateCoordinator(  # pylint: disable=too-few-public-methods
             _LOGGER.warning(
                 "Indexed mode requested but private API is disabled; falling back to PVPC mode"
             )
-        # quarter-hourly PVPC reuses the private-API token (indicator 791
-        # is only available on the token-based endpoint), so it's only
+        # EN: quarter-hourly PVPC reuses the private-API token (indicator
+        # 791 is only available on the token-based endpoint), so it's only
         # effective when the private API is actually in use.
+        # ES: el PVPC de 15 min reutiliza el token de la API privada (el
+        # indicador 791 solo está disponible en el endpoint con token), así
+        # que solo tiene efecto cuando la API privada está realmente activa.
         quarter_hourly_pvpc = use_private_api and bool(
             config.get(ATTR_QUARTER_HOURLY_PVPC, DEFAULT_QUARTER_HOURLY_PVPC)
         )
